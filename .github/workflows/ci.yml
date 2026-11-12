@@ -101,3 +101,31 @@ jobs:
           git add -A
           git commit -q -m "Smoke test screenshots for ${GITHUB_SHA}"
           git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" ci-screenshots
+
+  publish:
+    name: Publish the latest APK
+    needs: [spike, smoke]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: tsundoku-spike-apk
+          path: apk
+
+      # One pre-release that always holds the newest build, so there is a single page to
+      # open on the phone. It is replaced on every push to main.
+      - name: Replace the spike-latest pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release delete spike-latest --yes --cleanup-tag || true
+          gh release create spike-latest apk/spike-release.apk \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "Phase 0 spike (latest build)" \
+            --notes "Built from ${GITHUB_SHA}. Release mode, signed with the repo test key. Download spike-release.apk on the phone and install it; it installs over earlier spike builds. Not for distribution."

@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -80,6 +81,7 @@ private val DepthPush = 60.dp
 private val Perspective = 1000.dp
 private val ShelfStep = 48.dp
 private const val OpenScale = 0.62f
+private const val DegreesToRadians = 0.017453292f
 private const val OpenMillis = 750
 private const val TestMillis = 20_000L
 
@@ -190,12 +192,15 @@ private fun bookScale(d: Float, open: Float, m: Metrics): Float {
 private fun bookShift(d: Float, open: Float, angle: Float, scale: Float, m: Metrics): Float {
     val distance = abs(d)
     val carousel = sign(d) * (m.firstStep * min(distance, 1f) + m.furtherStep * max(distance - 1f, 0f))
-    val shelf = d * m.shelfStep + m.coverWidth / 2f
+    val shelf = d * m.shelfStep
     // Each book turns and scales about its hinge: the left edge while its spine shows, the
-    // right edge while its page edge shows. Scaling about an edge drags the book sideways,
-    // and the two hinges drag it opposite ways, so cancel that here to keep the swap seamless.
+    // right edge while its page edge shows. Left alone, that swings the cover away from its
+    // slot (a left neighbour would carry its spine off the edge of a phone) and makes the
+    // book jump when the hinge swaps sides. Shifting by how far the cover's centre has moved
+    // keeps every cover centred on its slot and the swap seamless.
     val hingeFromCentre = if (angle >= 0f) -m.coverWidth / 2f else m.coverWidth / 2f
-    return lerp(shelf, carousel, open) - hingeFromCentre * (1f - scale)
+    val foreshortening = scale * cos(angle * DegreesToRadians)
+    return lerp(shelf, carousel, open) - hingeFromCentre * (1f - foreshortening)
 }
 
 private fun bookShade(d: Float, open: Float): Float = min(0.22f * abs(d), 0.55f) * open
