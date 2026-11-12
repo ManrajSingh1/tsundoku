@@ -46,6 +46,11 @@ android {
     buildFeatures {
         compose = true
     }
+
+    // Readium's libraries are built against newer java.* APIs and refuse to link without this.
+    compileOptions {
+        isCoreLibraryDesugaringEnabled = true
+    }
 }
 
 dependencies {
@@ -64,4 +69,5 @@ dependencies {
     implementation(libs.readium.streamer)
     implementation(libs.readium.navigator)
     implementation(libs.readium.adapter.pdfium.navigator)
+    coreLibraryDesugaring(libs.android.desugar.jdk.libs)
 }

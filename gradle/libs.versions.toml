@@ -9,6 +9,7 @@ appcompat = "1.7.0"
 material = "1.12.0"
 androidxPdf = "1.0.0-beta01"
 readium = "3.4.0"
+desugarJdkLibs = "2.1.5"
 
 [libraries]
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
@@ -24,6 +25,7 @@ readium-shared = { group = "org.readium.kotlin-toolkit", name = "readium-shared"
 readium-streamer = { group = "org.readium.kotlin-toolkit", name = "readium-streamer", version.ref = "readium" }
 readium-navigator = { group = "org.readium.kotlin-toolkit", name = "readium-navigator", version.ref = "readium" }
 readium-adapter-pdfium-navigator = { group = "org.readium.kotlin-toolkit", name = "readium-adapter-pdfium-navigator", version.ref = "readium" }
+android-desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugarJdkLibs" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
