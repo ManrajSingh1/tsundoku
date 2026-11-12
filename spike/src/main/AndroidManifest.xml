@@ -14,6 +14,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Exported so CI can open it with a sample file. Spike only. -->
+        <activity
+            android:name=".PdfSpikeActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Spike.Pdf" />
     </application>
 
 </manifest>

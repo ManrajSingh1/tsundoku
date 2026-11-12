@@ -1,5 +1,6 @@
 package io.github.manrajsingh1.tsundoku.spike
 
+import android.content.Intent
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animate
@@ -53,6 +54,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -226,6 +228,7 @@ private fun CarouselSpikeScreen(frameStats: FrameStats) {
     val books = remember(tuning.bookCount) { sampleBooks(tuning.bookCount) }
     val state = remember(tuning.bookCount) { CarouselState(tuning.bookCount) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     LaunchedEffect(state) { state.playOpen() }
 
@@ -257,6 +260,7 @@ private fun CarouselSpikeScreen(frameStats: FrameStats) {
                 result = null
                 frameStats.reset()
             },
+            onOpenPdf = { context.startActivity(Intent(context, PdfSpikeActivity::class.java)) },
         )
     }
 }
@@ -497,6 +501,7 @@ private fun Controls(
     onRunTest: () -> Unit,
     onReplayOpen: () -> Unit,
     onResetStats: () -> Unit,
+    onOpenPdf: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
         Row(
@@ -514,6 +519,7 @@ private fun Controls(
         ) {
             OutlinedButton(onClick = onResetStats) { Text("Reset stats") }
             OutlinedButton(onClick = onToggleTuning) { Text(if (showTuning) "Hide tuning" else "Tuning") }
+            OutlinedButton(onClick = onOpenPdf) { Text("PDF") }
         }
         if (showTuning) {
             Row(

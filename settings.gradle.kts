@@ -17,6 +17,14 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // Spike only. Readium's PDFium adapter pulls a PDFium build from a personal GitHub
+        // fork (com.github.marain87) that is published nowhere else. Limited to that group.
+        maven {
+            url = uri("https://jitpack.io")
+            content {
+                includeGroupByRegex("com\\.github\\..*")
+            }
+        }
     }
 }
 

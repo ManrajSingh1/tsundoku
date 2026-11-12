@@ -5,6 +5,10 @@ agp = "9.5.1"
 kotlin = "2.4.20"
 composeBom = "2026.09.00"
 activityCompose = "1.10.1"
+appcompat = "1.7.0"
+material = "1.12.0"
+androidxPdf = "1.0.0-beta01"
+readium = "3.4.0"
 
 [libraries]
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
@@ -13,6 +17,13 @@ androidx-compose-ui-util = { group = "androidx.compose.ui", name = "ui-util" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+google-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+androidx-pdf-viewer-fragment = { group = "androidx.pdf", name = "pdf-viewer-fragment", version.ref = "androidxPdf" }
+readium-shared = { group = "org.readium.kotlin-toolkit", name = "readium-shared", version.ref = "readium" }
+readium-streamer = { group = "org.readium.kotlin-toolkit", name = "readium-streamer", version.ref = "readium" }
+readium-navigator = { group = "org.readium.kotlin-toolkit", name = "readium-navigator", version.ref = "readium" }
+readium-adapter-pdfium-navigator = { group = "org.readium.kotlin-toolkit", name = "readium-adapter-pdfium-navigator", version.ref = "readium" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

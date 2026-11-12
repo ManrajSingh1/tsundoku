@@ -31,6 +31,13 @@ jobs:
       - name: Build the spike in release mode with the test key
         run: ./gradlew :spike:assembleRelease --stacktrace
 
+      # The full tree is in the log so every transitive library, and so its licence, can be read.
+      - name: Print the release dependency tree
+        run: ./gradlew :spike:dependencies --configuration releaseRuntimeClasspath --console=plain | grep -v "^$" | head -400
+
+      - name: Report APK size
+        run: ls -l spike/build/outputs/apk/release/
+
       - name: List native libraries in the APK
         run: unzip -l spike/build/outputs/apk/release/spike-release.apk | grep '\.so$' || echo "No native libraries."
 

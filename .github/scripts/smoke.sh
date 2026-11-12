@@ -111,7 +111,25 @@ sleep 22
 shot 09-test-result
 describe "after the 20-second test"
 
+# The PDF screen, once per engine, with a generated sample file. This proves each engine
+# opens a document in a release build; it is not a performance comparison.
+python3 .github/scripts/make_sample_pdf.py "$LOGS/sample.pdf" 40
+adb shell mkdir -p "/sdcard/Android/data/$PKG/files"
+adb push "$LOGS/sample.pdf" "/sdcard/Android/data/$PKG/files/sample.pdf"
+for engine in androidx readium; do
+  adb shell am start -W -n "$PKG/.PdfSpikeActivity" --es engine "$engine"
+  sleep 10
+  shot "10-pdf-$engine"
+  describe "PDF opened with $engine"
+  adb shell input swipe 540 1900 540 1100 400
+  sleep 4
+  shot "11-pdf-$engine-scrolled"
+  adb shell input keyevent BACK
+  sleep 2
+done
+
 adb logcat -d > "$LOGS/logcat.txt"
+grep -E "PdfSpike|AndroidRuntime" "$LOGS/logcat.txt" | tail -40 || true
 if ! adb shell pidof "$PKG" > /dev/null; then
   echo "The app is no longer running."
   grep -A 30 "FATAL EXCEPTION" "$LOGS/logcat.txt" || true
