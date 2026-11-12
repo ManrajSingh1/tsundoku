@@ -500,6 +500,13 @@ private fun Controls(
         ) {
             Button(onClick = onRunTest) { Text("Run 20 s test") }
             OutlinedButton(onClick = onReplayOpen) { Text("Replay open") }
+        }
+        // Two short rows rather than one long one: on a phone the fourth button fell off the
+        // right edge, where nobody would find it.
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             OutlinedButton(onClick = onResetStats) { Text("Reset stats") }
             OutlinedButton(onClick = onToggleTuning) { Text(if (showTuning) "Hide tuning" else "Tuning") }
         }

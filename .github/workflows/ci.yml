@@ -50,6 +50,8 @@ jobs:
     needs: spike
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -78,5 +80,22 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: smoke-screenshots
-          path: shots/
+          name: smoke-test-output
+          path: |
+            shots/
+            smoke-logs/
+
+      # Keeps the latest screenshots on a branch of their own, so they can be looked at in
+      # the browser without downloading anything. The branch is replaced on every run.
+      - name: Publish screenshots to the ci-screenshots branch
+        if: always() && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd shots
+          git init -q -b ci-screenshots
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Smoke test screenshots for ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" ci-screenshots

@@ -5,17 +5,37 @@
 set -euo pipefail
 
 PKG=io.github.manrajsingh1.tsundoku.spike
-OUT=shots
-mkdir -p "$OUT"
+SHOTS=shots
+LOGS=smoke-logs
+mkdir -p "$SHOTS" "$LOGS"
 
-shot() { adb exec-out screencap -p > "$OUT/$1.png"; }
+shot() { adb exec-out screencap -p > "$SHOTS/$1.png"; }
 
-# Taps the centre of the first element whose text matches $1, found through the
+dump() {
+  adb shell uiautomator dump /sdcard/ui.xml > /dev/null
+  adb pull /sdcard/ui.xml "$LOGS/ui.xml" > /dev/null
+}
+
+# Prints every piece of text on screen with its bounds, so the job log shows what the
+# app displayed at each step.
+describe() {
+  dump
+  echo "--- on screen: $1"
+  python3 - "$LOGS/ui.xml" <<'PY'
+import re, sys
+xml = open(sys.argv[1], encoding="utf-8").read()
+for node in re.findall(r"<node[^>]*>", xml):
+    text = re.search(r'text="([^"]*)"', node).group(1)
+    if text:
+        print("   ", re.search(r'bounds="([^"]*)"', node).group(1), text)
+PY
+}
+
+# Taps the centre of the first element whose text is exactly $1, found through the
 # accessibility tree, so the script does not depend on screen coordinates.
 tap_text() {
-  adb shell uiautomator dump /sdcard/ui.xml > /dev/null
-  adb pull /sdcard/ui.xml "$OUT/ui.xml" > /dev/null
-  python3 - "$1" "$OUT/ui.xml" <<'PY'
+  dump
+  python3 - "$1" "$LOGS/ui.xml" <<'PY'
 import re, subprocess, sys
 text, path = sys.argv[1], sys.argv[2]
 xml = open(path, encoding="utf-8").read()
@@ -27,16 +47,23 @@ subprocess.run(["adb", "shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y
 PY
 }
 
+finish() {
+  adb logcat -d > "$LOGS/logcat.txt" || true
+}
+trap finish EXIT
+
 adb install -r apk/spike-release.apk
 adb logcat -c
 adb shell am start -W -n "$PKG/.MainActivity"
 shot 01-opening
 sleep 5
 shot 02-open
+describe "after the open animation"
 
 adb shell input swipe 800 1000 250 1000 300
 sleep 3
 shot 03-after-swipe-left
+describe "after swiping left"
 
 adb shell input swipe 300 1000 560 1000 300
 sleep 3
@@ -53,20 +80,26 @@ sleep 1
 tap_text "Hide tuning"
 sleep 1
 
+tap_text "Replay open"
+sleep 0.3
+shot 07-replay-mid-open
+sleep 3
+
 tap_text "Run 20 s test"
 sleep 6
-shot 07-test-running
+shot 08-test-running
 sleep 22
-shot 08-test-result
+shot 09-test-result
+describe "after the 20-second test"
 
-adb logcat -d > "$OUT/logcat.txt"
+adb logcat -d > "$LOGS/logcat.txt"
 if ! adb shell pidof "$PKG" > /dev/null; then
   echo "The app is no longer running."
-  grep -A 30 "FATAL EXCEPTION" "$OUT/logcat.txt" || true
+  grep -A 30 "FATAL EXCEPTION" "$LOGS/logcat.txt" || true
   exit 1
 fi
-if grep -q "FATAL EXCEPTION" "$OUT/logcat.txt"; then
-  grep -A 30 "FATAL EXCEPTION" "$OUT/logcat.txt"
+if grep -q "FATAL EXCEPTION" "$LOGS/logcat.txt"; then
+  grep -A 30 "FATAL EXCEPTION" "$LOGS/logcat.txt"
   exit 1
 fi
 echo "Smoke test passed: the app launched, swiped, switched modes and finished a test run."
