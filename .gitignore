@@ -1,0 +1,9 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+captures/
+.DS_Store
+# The spike test key under spike/keystore/ is committed on purpose. Never add a real release key.
