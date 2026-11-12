@@ -11,9 +11,34 @@ mkdir -p "$SHOTS" "$LOGS"
 
 shot() { adb exec-out screencap -p > "$SHOTS/$1.png"; }
 
+# Reads the accessibility tree into $LOGS/ui.xml. The emulator renders in software and is
+# slow enough that system apps sometimes raise "isn't responding" dialogs over ours;
+# those are dismissed here so they cannot swallow the next tap.
 dump() {
-  adb shell uiautomator dump /sdcard/ui.xml > /dev/null
-  adb pull /sdcard/ui.xml "$LOGS/ui.xml" > /dev/null
+  for _ in 1 2 3 4; do
+    adb shell uiautomator dump /sdcard/ui.xml > /dev/null
+    adb pull /sdcard/ui.xml "$LOGS/ui.xml" > /dev/null
+    if grep -q "isn&apos;t responding\|isn't responding" "$LOGS/ui.xml"; then
+      echo "Dismissing a system 'not responding' dialog."
+      tap_in_dump "Wait"
+      sleep 3
+    else
+      return 0
+    fi
+  done
+}
+
+tap_in_dump() {
+  python3 - "$1" "$LOGS/ui.xml" <<'PY'
+import re, subprocess, sys
+text, path = sys.argv[1], sys.argv[2]
+xml = open(path, encoding="utf-8").read()
+m = re.search(r'text="%s"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"' % re.escape(text), xml)
+if not m:
+    sys.exit(f"No element with text {text!r} on screen")
+x1, y1, x2, y2 = map(int, m.groups())
+subprocess.run(["adb", "shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2)], check=True)
+PY
 }
 
 # Prints every piece of text on screen with its bounds, so the job log shows what the
@@ -35,16 +60,7 @@ PY
 # accessibility tree, so the script does not depend on screen coordinates.
 tap_text() {
   dump
-  python3 - "$1" "$LOGS/ui.xml" <<'PY'
-import re, subprocess, sys
-text, path = sys.argv[1], sys.argv[2]
-xml = open(path, encoding="utf-8").read()
-m = re.search(r'text="%s"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"' % re.escape(text), xml)
-if not m:
-    sys.exit(f"No element with text {text!r} on screen")
-x1, y1, x2, y2 = map(int, m.groups())
-subprocess.run(["adb", "shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2)], check=True)
-PY
+  tap_in_dump "$1"
 }
 
 finish() {
@@ -53,6 +69,9 @@ finish() {
 trap finish EXIT
 
 adb install -r apk/spike-release.apk
+# Let the freshly booted emulator settle, and clear any dialog it raised while booting.
+sleep 20
+dump
 adb logcat -c
 adb shell am start -W -n "$PKG/.MainActivity"
 shot 01-opening
