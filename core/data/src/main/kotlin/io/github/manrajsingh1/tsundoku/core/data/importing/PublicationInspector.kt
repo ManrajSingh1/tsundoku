@@ -16,6 +16,7 @@ import org.readium.r2.shared.publication.Link
 import org.readium.r2.shared.publication.Publication
 import org.readium.r2.shared.publication.services.coverFitting
 import org.readium.r2.shared.publication.services.positions
+import org.readium.r2.shared.util.Url
 import org.readium.r2.shared.util.asset.AssetRetriever
 import org.readium.r2.shared.util.getOrElse
 import org.readium.r2.shared.util.http.DefaultHttpClient
@@ -127,10 +128,9 @@ class ReadiumPublicationInspector @Inject constructor(
     }
 
     private suspend fun readComicInfo(publication: Publication): ComicInfo? {
-        val entry = publication.container.entries.firstOrNull {
-            it.toString().substringAfterLast('/').equals("ComicInfo.xml", ignoreCase = true)
-        } ?: return null
-        val resource = publication.container[entry] ?: return null
+        // The file sits at the root of the archive under exactly this name.
+        val url = Url("ComicInfo.xml") ?: return null
+        val resource = publication.get(url) ?: return null
         val bytes = readCapped(resource, ComicInfoParser.MAX_BYTES.toLong()) ?: return null
         return ComicInfoParser.parse(bytes)
     }
