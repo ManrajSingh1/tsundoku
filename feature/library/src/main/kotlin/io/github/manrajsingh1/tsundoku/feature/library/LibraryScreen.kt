@@ -46,9 +46,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -254,26 +254,26 @@ fun LibraryScreen(
  */
 @Composable
 private fun LibraryMessages(messages: Flow<LibraryMessage>, snackbars: SnackbarHostState) {
-    val context = LocalContext.current
+    val resources = LocalResources.current
     val view = LocalView.current
-    LaunchedEffect(messages, snackbars) {
+    LaunchedEffect(messages, snackbars, resources) {
         messages.collect { message ->
             when (message) {
                 is LibraryMessage.BookMoved -> view.announceForAccessibility(
-                    context.getString(R.string.feature_library_announce_moved, message.position, message.count),
+                    resources.getString(R.string.feature_library_announce_moved, message.position, message.count),
                 )
                 is LibraryMessage.BookMovedToShelf -> view.announceForAccessibility(
-                    context.getString(R.string.feature_library_announce_moved_shelf, message.shelfName),
+                    resources.getString(R.string.feature_library_announce_moved_shelf, message.shelfName),
                 )
                 is LibraryMessage.BookRemoved -> launch {
-                    snackbars.showSnackbar(context.getString(R.string.feature_library_removed, message.title))
+                    snackbars.showSnackbar(resources.getString(R.string.feature_library_removed, message.title))
                 }
                 is LibraryMessage.ShelfDeleted -> launch {
                     snackbars.showSnackbar(
                         if (message.bookCount == 0) {
-                            context.getString(R.string.feature_library_shelf_deleted_empty, message.name)
+                            resources.getString(R.string.feature_library_shelf_deleted_empty, message.name)
                         } else {
-                            context.resources.getQuantityString(
+                            resources.getQuantityString(
                                 R.plurals.feature_library_shelf_deleted,
                                 message.bookCount,
                                 message.name,
@@ -381,7 +381,8 @@ private fun ShelfList(
     val layoutDirection = LocalLayoutDirection.current
 
     // A book sent to the next shelf may land off screen; follow it there.
-    val selectedShelfIndex = if (selected == null) -1 else shelves.indexOfFirst { it.shelf.id == selected.shelf.shelf.id }
+    val selectedShelfId = selected?.shelf?.shelf?.id
+    val selectedShelfIndex = shelves.indexOfFirst { it.shelf.id == selectedShelfId }
     LaunchedEffect(selectedShelfIndex) {
         if (selectedShelfIndex >= 0) {
             val item = selectedShelfIndex + SHELVES_START_AT

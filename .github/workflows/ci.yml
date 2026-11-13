@@ -44,10 +44,11 @@ jobs:
       - name: Build the release and staging APKs
         run: ./gradlew :app:assembleRelease :app:assembleStaging --stacktrace
 
-      # Report only for now: prints what Android lint finds without failing the build.
+      # Prints what Android lint finds. Errors fail the job, but only in its last step, so
+      # the APKs and the rest of the report are still produced.
       - name: Android lint
         run: |
-          ./gradlew :app:lintRelease --continue || true
+          ./gradlew :app:lintRelease --continue && touch lint-passed || true
           for report in app/build/reports/lint-results-release.txt app/build/intermediates/lint_intermediate_text_report/release/lintReportRelease/lint-results-release.txt; do
             if [ -f "$report" ]; then grep -E "Warning:|Error:|errors, [0-9]+ warnings" "$report" | sed "s#$PWD/##"; break; fi
           done
@@ -113,6 +114,9 @@ jobs:
           name: tsundoku-apks
           path: apk/*.apk
           if-no-files-found: error
+
+      - name: Fail if Android lint found errors
+        run: test -f lint-passed || { echo "Android lint found errors; see the Android lint step."; exit 1; }
 
       - uses: actions/upload-artifact@v4
         if: failure()

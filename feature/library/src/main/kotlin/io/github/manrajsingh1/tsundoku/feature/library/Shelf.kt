@@ -236,16 +236,10 @@ private fun ShelfStrip(
             // The same things the edit bar does, offered on the spine itself, so a screen
             // reader user can rearrange a shelf without leaving the book they are on.
             val accessibilityActions = buildList {
-                if (index > 0) {
-                    add(CustomAccessibilityAction(moveLeftLabel) { actions.onMoveBook(book.id, -1); true })
-                }
-                if (index < books.lastIndex) {
-                    add(CustomAccessibilityAction(moveRightLabel) { actions.onMoveBook(book.id, 1); true })
-                }
-                if (hasOtherShelves) {
-                    add(CustomAccessibilityAction(nextShelfLabel) { actions.onMoveBookToNextShelf(book.id); true })
-                }
-                add(CustomAccessibilityAction(removeLabel) { onAskRemoveBook(book); true })
+                if (index > 0) add(accessibilityAction(moveLeftLabel) { actions.onMoveBook(book.id, -1) })
+                if (index < books.lastIndex) add(accessibilityAction(moveRightLabel) { actions.onMoveBook(book.id, 1) })
+                if (hasOtherShelves) add(accessibilityAction(nextShelfLabel) { actions.onMoveBookToNextShelf(book.id) })
+                add(accessibilityAction(removeLabel) { onAskRemoveBook(book) })
             }
             Spine(
                 book = book,
@@ -290,6 +284,12 @@ private fun ShelfStrip(
     }
 }
 
+/** A screen reader action that always reports it was carried out. */
+private fun accessibilityAction(label: String, action: () -> Unit) = CustomAccessibilityAction(label) {
+    action()
+    true
+}
+
 /** A dashed, book-sized gap at the end of a shelf: tap it to add files to this shelf. */
 @Composable
 private fun AddSlot(label: String, height: Dp, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -303,7 +303,11 @@ private fun AddSlot(label: String, height: Dp, onClick: () -> Unit, modifier: Mo
             .dashedOutline(outline),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(imageVector = Icons.Filled.Add, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(
+            imageVector = Icons.Filled.Add,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
