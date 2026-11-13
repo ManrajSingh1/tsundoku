@@ -142,14 +142,21 @@ jobs:
           name: tsundoku-apks
           path: apk
 
+      # The build people already have installed, so the smoke test can upgrade from it.
+      - name: Fetch the previously published APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download preview-latest --repo "$GITHUB_REPOSITORY" --pattern tsundoku-preview.apk --dir apk-previous || echo "No previous preview."
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # Database and import tests run against real SQLite and the real reading engines, then
-      # the smoke test drives the minified app. Emulator speed is not evidence of anything.
+      # The smoke test drives the minified app; then database and import tests run against
+      # real SQLite and the real reading engines, and the library screen is driven through
+      # its accessibility tree. Emulator speed is not evidence of anything.
       - uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -164,7 +171,7 @@ jobs:
           # the instrumented tests need loads the machine enough to stall the launcher.
           script: |
             bash .github/scripts/smoke.sh
-            ./gradlew :core:database:connectedDebugAndroidTest :core:data:connectedDebugAndroidTest --stacktrace
+            ./gradlew :core:database:connectedDebugAndroidTest :core:data:connectedDebugAndroidTest :feature:library:connectedDebugAndroidTest --stacktrace
 
       - name: Instrumented test summary
         if: always()

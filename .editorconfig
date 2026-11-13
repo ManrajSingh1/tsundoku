@@ -14,3 +14,8 @@ ij_kotlin_allow_trailing_comma = true
 ij_kotlin_allow_trailing_comma_on_call_site = true
 # Composable functions are named like the things they draw.
 ktlint_function_naming_ignore_when_annotated_with = Composable
+# The project wraps a signature one parameter to a line as soon as it has more than a few,
+# and keeps short when-branches together; these three rules want the opposite.
+ktlint_standard_class-signature = disabled
+ktlint_standard_function-signature = disabled
+ktlint_standard_blank-line-between-when-conditions = disabled
