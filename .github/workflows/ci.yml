@@ -1,9 +1,13 @@
 name: CI
 
+# One run per change: pull requests are checked as pull requests, and main is checked
+# (and published) when they merge. Documentation-only changes do not start a run.
 on:
   push:
-    branches: [main, "phase-*"]
+    branches: [main]
+    paths-ignore: ["**.md", "docs/**"]
   pull_request:
+    paths-ignore: ["**.md", "docs/**"]
   workflow_dispatch:
 
 concurrency:
@@ -167,7 +171,7 @@ jobs:
       # Keeps the latest screenshots on a branch of their own, so they can be looked at in
       # the browser without downloading anything. The branch is replaced on every run.
       - name: Publish screenshots to the ci-screenshots branch
-        if: always() && github.event_name == 'push'
+        if: always() && github.event.pull_request.head.repo.fork != true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
