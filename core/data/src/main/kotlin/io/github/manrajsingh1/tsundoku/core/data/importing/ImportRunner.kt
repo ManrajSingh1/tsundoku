@@ -1,6 +1,6 @@
 package io.github.manrajsingh1.tsundoku.core.data.importing
 
-import android.net.Uri
+import androidx.core.net.toUri
 import io.github.manrajsingh1.tsundoku.core.database.ImportItemEntity
 import io.github.manrajsingh1.tsundoku.core.database.ImportQueueDao
 import io.github.manrajsingh1.tsundoku.core.model.ImportState
@@ -32,7 +32,7 @@ class ImportRunner @Inject constructor(
     /** Replaces a picked folder with one queue item for each book found inside it. */
     private suspend fun expandFolder(item: ImportItemEntity) {
         val books = try {
-            documents.listBooksInTree(Uri.parse(item.uri))
+            documents.listBooksInTree(item.uri.toUri())
         } catch (e: Exception) {
             emptyList()
         }
@@ -46,7 +46,7 @@ class ImportRunner @Inject constructor(
 
     private suspend fun importFile(item: ImportItemEntity) {
         val outcome = try {
-            importer.import(Uri.parse(item.uri))
+            importer.import(item.uri.toUri())
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

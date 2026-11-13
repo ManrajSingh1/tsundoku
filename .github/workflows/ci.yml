@@ -45,7 +45,7 @@ jobs:
         run: |
           ./gradlew :app:lintRelease --continue || true
           for report in app/build/reports/lint-results-release.txt app/build/intermediates/lint_intermediate_text_report/release/lintReportRelease/lint-results-release.txt; do
-            if [ -f "$report" ]; then cat "$report" | tail -80; break; fi
+            if [ -f "$report" ]; then grep -E "Warning:|Error:|errors, [0-9]+ warnings" "$report" | sed "s#$PWD/##"; break; fi
           done
 
       - name: Collect the APKs

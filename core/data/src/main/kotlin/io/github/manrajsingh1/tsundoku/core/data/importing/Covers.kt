@@ -3,6 +3,7 @@ package io.github.manrajsingh1.tsundoku.core.data.importing
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import androidx.core.graphics.scale
 import androidx.palette.graphics.Palette
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -49,13 +50,11 @@ object BoundedBitmapDecoder {
         }
         val decoded = attempt ?: return null
 
-        val scale = min(maxWidth / decoded.width.toFloat(), maxHeight / decoded.height.toFloat())
-        if (scale >= 1f) return decoded
-        val scaled = Bitmap.createScaledBitmap(
-            decoded,
-            max(1, (decoded.width * scale).roundToInt()),
-            max(1, (decoded.height * scale).roundToInt()),
-            true,
+        val factor = min(maxWidth / decoded.width.toFloat(), maxHeight / decoded.height.toFloat())
+        if (factor >= 1f) return decoded
+        val scaled = decoded.scale(
+            max(1, (decoded.width * factor).roundToInt()),
+            max(1, (decoded.height * factor).roundToInt()),
         )
         if (scaled !== decoded) decoded.recycle()
         return scaled
