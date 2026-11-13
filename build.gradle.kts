@@ -1,4 +1,2 @@
-plugins {
-    alias(libs.plugins.android.application) apply false
-    alias(libs.plugins.kotlin.compose) apply false
-}
+// Every plugin is put on the classpath by build-logic, so nothing is declared here.
+// Module build files apply the tsundoku.* convention plugins from build-logic/convention.

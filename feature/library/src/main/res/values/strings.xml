@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_library_title">TSUNDOKU</string>
+    <string name="feature_library_empty_title">Your shelves are empty</string>
+    <string name="feature_library_empty_body">Add manga, comics, EPUBs and PDFs. Your files stay where they are; TSUNDOKU only remembers where to find them.</string>
+    <string name="feature_library_add_files">Add files</string>
+    <string name="feature_library_add_folder">Add folder</string>
+    <plurals name="feature_library_shelf_count">
+        <item quantity="one">%d book</item>
+        <item quantity="other">%d books</item>
+    </plurals>
+    <plurals name="feature_library_pages">
+        <item quantity="one">%d page</item>
+        <item quantity="other">%d pages</item>
+    </plurals>
+    <string name="feature_library_right_to_left">Right to left</string>
+    <string name="feature_library_missing">File not found</string>
+    <!-- Volume number after a series name, e.g. "One Piece, vol. 12". -->
+    <string name="feature_library_series_volume">%1$s, vol. %2$s</string>
+</resources>

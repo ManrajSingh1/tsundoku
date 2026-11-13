@@ -1,4 +1,5 @@
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         google {
             content {
@@ -17,12 +18,13 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // Spike only. Readium's PDFium adapter pulls a PDFium build from a personal GitHub
-        // fork (com.github.marain87) that is published nowhere else. Limited to that group.
+        // Readium's PDFium adapter takes its PDFium build from a personal GitHub fork
+        // (com.github.marain87) that is published nowhere else. Limited to that group so
+        // nothing else can ever resolve from JitPack. See docs/decisions/0002.
         maven {
             url = uri("https://jitpack.io")
             content {
-                includeGroupByRegex("com\\.github\\..*")
+                includeGroup("com.github.marain87")
             }
         }
     }
@@ -30,6 +32,10 @@ dependencyResolutionManagement {
 
 rootProject.name = "tsundoku"
 
-// Phase 0 only: a throwaway app that proves the risky parts (3D carousel, PDF engines).
-// It is deleted when Gate 0 closes and the real modules arrive.
-include(":spike")
+include(":app")
+include(":core:model")
+include(":core:database")
+include(":core:data")
+include(":core:ui")
+include(":feature:library")
+include(":feature:import")

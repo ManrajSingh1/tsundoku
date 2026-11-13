@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- Staging builds only. Lets CI start an import with adb, because a script cannot
+             work the system file picker. It reads only from this app's own files folder. -->
+        <activity
+            android:name=".StagingImportActivity"
+            android:exported="true" />
+    </application>
+
+</manifest>

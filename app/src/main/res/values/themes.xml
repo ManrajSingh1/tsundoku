@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Only what the system draws before Compose takes over: the window behind the first
+         frame. Everything else is themed in core/ui. -->
+    <style name="Theme.Tsundoku" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+</resources>

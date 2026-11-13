@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="Theme.Spike" parent="android:Theme.Material.NoActionBar" />
-
-    <!-- Both PDF viewers are fragments built on AppCompat and Material components. -->
-    <style name="Theme.Spike.Pdf" parent="Theme.Material3.DayNight.NoActionBar" />
-</resources>

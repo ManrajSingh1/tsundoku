@@ -1,19 +1,22 @@
 #!/usr/bin/env bash
-# Installs the spike APK on the CI emulator, drives it, and saves screenshots.
-# This proves the app launches and the carousel flow works. It says nothing about
-# frame rate: the emulator renders in software, so its timings are meaningless.
+# Drives the staging APK on the CI emulator: imports sample books through the real import
+# path of a minified build, checks the library shows them, and saves screenshots.
+#
+# It proves the app works end to end. It says nothing about speed: the emulator renders in
+# software.
 set -euo pipefail
 
-PKG=io.github.manrajsingh1.tsundoku.spike
+APP=io.github.manrajsingh1.tsundoku
+STAGING=$APP.staging
 SHOTS=shots
 LOGS=smoke-logs
 mkdir -p "$SHOTS" "$LOGS"
 
 shot() { adb exec-out screencap -p > "$SHOTS/$1.png"; }
 
-# Reads the accessibility tree into $LOGS/ui.xml. The emulator renders in software and is
-# slow enough that system apps sometimes raise "isn't responding" dialogs over ours;
-# those are dismissed here so they cannot swallow the next tap.
+# Reads the accessibility tree into $LOGS/ui.xml. The emulator is slow enough that system
+# apps sometimes raise "isn't responding" dialogs over ours; those are dismissed here so
+# they cannot swallow the next tap or hide the screen being checked.
 dump() {
   for _ in 1 2 3 4; do
     adb shell uiautomator dump /sdcard/ui.xml > /dev/null
@@ -41,102 +44,109 @@ subprocess.run(["adb", "shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y
 PY
 }
 
-# Prints every piece of text on screen with its bounds, so the job log shows what the
-# app displayed at each step.
+# Prints every piece of text on screen, so the job log shows what the app displayed.
 describe() {
   dump
   echo "--- on screen: $1"
   python3 - "$LOGS/ui.xml" <<'PY'
-import re, sys
+import html, re, sys
 xml = open(sys.argv[1], encoding="utf-8").read()
 for node in re.findall(r"<node[^>]*>", xml):
     text = re.search(r'text="([^"]*)"', node).group(1)
     if text:
-        print("   ", re.search(r'bounds="([^"]*)"', node).group(1), text)
+        print("   ", html.unescape(text))
 PY
 }
 
-# Taps the centre of the first element whose text is exactly $1, found through the
-# accessibility tree, so the script does not depend on screen coordinates.
-tap_text() {
-  dump
-  tap_in_dump "$1"
+# Fails unless every argument appears somewhere in the text on screen.
+expect() {
+  python3 - "$LOGS/ui.xml" "$@" <<'PY'
+import html, re, sys
+xml = open(sys.argv[1], encoding="utf-8").read()
+shown = " | ".join(html.unescape(t) for t in re.findall(r'text="([^"]*)"', xml) if t)
+missing = [want for want in sys.argv[2:] if want not in shown]
+if missing:
+    sys.exit(f"Not on screen: {missing}")
+print("    as expected:", ", ".join(sys.argv[2:]))
+PY
 }
 
 finish() {
   adb logcat -d > "$LOGS/logcat.txt" || true
+  adb shell settings put system font_scale 1.0 || true
+  adb shell cmd uimode night no || true
 }
 trap finish EXIT
 
-adb install -r apk/spike-release.apk
+fail_on_crash() {
+  adb logcat -d > "$LOGS/logcat.txt"
+  if grep -q "FATAL EXCEPTION" "$LOGS/logcat.txt"; then
+    grep -A 40 "FATAL EXCEPTION" "$LOGS/logcat.txt" | head -120
+    exit 1
+  fi
+}
+
+adb install -r apk/app-staging.apk
 # Let the freshly booted emulator settle, and clear any dialog it raised while booting.
 sleep 20
 dump
 adb logcat -c
-adb shell am start -W -n "$PKG/.MainActivity"
-shot 01-opening
-sleep 5
-shot 02-open
-describe "after the open animation"
 
-adb shell input swipe 800 1000 250 1000 300
-sleep 3
-shot 03-after-swipe-left
-describe "after swiping left"
-
-adb shell input swipe 300 1000 560 1000 300
-sleep 3
-shot 04-after-swipe-right
-
-tap_text "Tuning"
-sleep 2
-shot 05-tuning
-tap_text "Flat"
-sleep 2
-shot 06-flat
-tap_text "3D"
-sleep 1
-tap_text "Hide tuning"
-sleep 1
-
-tap_text "Replay open"
-sleep 0.3
-shot 07-replay-mid-open
-sleep 3
-
-tap_text "Run 20 s test"
+# 1. A first launch with nothing in the library.
+adb shell am start -W -n "$STAGING/$APP.MainActivity"
 sleep 6
-shot 08-test-running
-sleep 22
-shot 09-test-result
-describe "after the 20-second test"
+shot 01-empty-library
+describe "first launch"
+expect "TSUNDOKU" "Your shelves are empty" "Add folder" "Add files"
+fail_on_crash
 
-# The PDF screen, once per engine, with a generated sample file. This proves each engine
-# opens a document in a release build; it is not a performance comparison.
-python3 .github/scripts/make_sample_pdf.py "$LOGS/sample.pdf" 40
-adb shell mkdir -p "/sdcard/Android/data/$PKG/files"
-adb push "$LOGS/sample.pdf" "/sdcard/Android/data/$PKG/files/sample.pdf"
-for engine in androidx readium; do
-  adb shell am start -W -n "$PKG/.PdfSpikeActivity" --es engine "$engine"
-  sleep 10
-  shot "10-pdf-$engine"
-  describe "PDF opened with $engine"
-  adb shell input swipe 540 1900 540 1100 400
-  sleep 4
-  shot "11-pdf-$engine-scrolled"
-  adb shell input keyevent BACK
-  sleep 2
+# 2. Import five sample files: two comics, an exact copy of one, an EPUB and a PDF.
+python3 .github/scripts/make_fixtures.py "$LOGS/fixtures"
+adb shell mkdir -p "/sdcard/Android/data/$STAGING/files/import"
+adb push "$LOGS/fixtures/." "/sdcard/Android/data/$STAGING/files/import/"
+adb shell am start -W -n "$STAGING/$APP.StagingImportActivity"
+for _ in $(seq 1 40); do
+  sleep 3
+  dump
+  # The Dismiss button only appears once the whole batch has finished.
+  if grep -q 'text="Dismiss"' "$LOGS/ui.xml"; then break; fi
 done
+shot 02-after-import
+describe "after the import finished"
+fail_on_crash
+expect "Added 4 books" "1 was already in your library"
+expect "Manga" "Novels" "Documents"
+expect "The Third Volume" "Quiet Shelf v07" "A Test Novel" "Quarterly report"
+expect "Test Manga, vol. 3" "A. Author" "Nora Novelist" "Right to left" "40 pages"
 
-adb logcat -d > "$LOGS/logcat.txt"
-grep -E "PdfSpike|AndroidRuntime" "$LOGS/logcat.txt" | tail -40 || true
-if ! adb shell pidof "$PKG" > /dev/null; then
-  echo "The app is no longer running."
-  grep -A 30 "FATAL EXCEPTION" "$LOGS/logcat.txt" || true
-  exit 1
-fi
-if grep -q "FATAL EXCEPTION" "$LOGS/logcat.txt"; then
-  grep -A 30 "FATAL EXCEPTION" "$LOGS/logcat.txt"
-  exit 1
-fi
-echo "Smoke test passed: the app launched, swiped, switched modes and finished a test run."
+# 3. The same screen in dark theme and at the largest text size.
+adb shell cmd uimode night yes
+sleep 4
+shot 03-dark-theme
+adb shell cmd uimode night no
+adb shell settings put system font_scale 2.0
+sleep 4
+shot 04-largest-text
+describe "at 200% text size"
+expect "The Third Volume" "A Test Novel"
+adb shell settings put system font_scale 1.0
+sleep 2
+
+# 4. The library survives the app being killed and started again.
+adb shell am force-stop "$STAGING"
+adb shell am start -W -n "$STAGING/$APP.MainActivity"
+sleep 6
+describe "after a restart"
+expect "The Third Volume" "A Test Novel" "Quarterly report"
+fail_on_crash
+
+# 5. The APK that is actually published starts too.
+adb install -r apk/app-release.apk
+adb shell am start -W -n "$APP/$APP.MainActivity"
+sleep 6
+shot 05-release-build
+describe "the release build"
+expect "TSUNDOKU" "Your shelves are empty"
+fail_on_crash
+
+echo "Smoke test passed."
