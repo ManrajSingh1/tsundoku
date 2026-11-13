@@ -71,12 +71,41 @@ print("    as expected:", ", ".join(sys.argv[2:]))
 PY
 }
 
+# Whatever happens, leave the evidence in the job log: a crash's stack trace is the first
+# thing anyone needs, and the full logcat is only in a downloadable artifact.
 finish() {
+  status=$?
   adb logcat -d > "$LOGS/logcat.txt" || true
+  if [ "$status" -ne 0 ]; then
+    echo "--- the smoke test failed; crashes and hangs in the device log:"
+    grep -A 40 "FATAL EXCEPTION" "$LOGS/logcat.txt" | head -150 || true
+    grep -E "ANR in|Force finishing|Process .* has died|has crashed" "$LOGS/logcat.txt" | tail -20 || true
+    echo "--- what is in front:"
+    adb shell dumpsys activity activities | grep -E "topResumedActivity|ResumedActivity" | head -5 || true
+    adb exec-out screencap -p > "$SHOTS/99-at-failure.png" || true
+  fi
   adb shell settings put system font_scale 1.0 || true
   adb shell cmd uimode night no || true
 }
 trap finish EXIT
+
+# Starts an activity and makes sure it really is in front. The emulator's own launcher
+# sometimes hangs and takes the screen back; if so, the activity is started again.
+launch() {
+  for attempt in 1 2 3; do
+    adb shell am start -W -n "$1"
+    sleep "${2:-6}"
+    dump
+    if adb shell dumpsys activity activities | grep -E "topResumedActivity|mResumedActivity" | grep -q "${1%%/*}/"; then
+      return 0
+    fi
+    echo "Attempt $attempt: $1 is not in front; trying again."
+    adb shell input keyevent KEYCODE_HOME
+    sleep 3
+  done
+  echo "$1 never came to the front."
+  return 1
+}
 
 fail_on_crash() {
   adb logcat -d > "$LOGS/logcat.txt"
@@ -87,14 +116,16 @@ fail_on_crash() {
 }
 
 adb install -r apk/app-staging.apk
+# The emulator renders in software and its launcher regularly stops responding. Keep the
+# system from putting "isn't responding" dialogs over the app under test.
+adb shell settings put global hide_error_dialogs 1
 # Let the freshly booted emulator settle, and clear any dialog it raised while booting.
 sleep 20
 dump
 adb logcat -c
 
 # 1. A first launch with nothing in the library.
-adb shell am start -W -n "$STAGING/$APP.MainActivity"
-sleep 6
+launch "$STAGING/$APP.MainActivity"
 shot 01-empty-library
 describe "first launch"
 expect "TSUNDOKU" "Your shelves are empty" "Add folder" "Add files"
@@ -134,16 +165,14 @@ sleep 2
 
 # 4. The library survives the app being killed and started again.
 adb shell am force-stop "$STAGING"
-adb shell am start -W -n "$STAGING/$APP.MainActivity"
-sleep 6
+launch "$STAGING/$APP.MainActivity"
 describe "after a restart"
 expect "The Third Volume" "A Test Novel" "Quarterly report"
 fail_on_crash
 
 # 5. The APK that is actually published starts too.
 adb install -r apk/app-release.apk
-adb shell am start -W -n "$APP/$APP.MainActivity"
-sleep 6
+launch "$APP/$APP.MainActivity"
 shot 05-release-build
 describe "the release build"
 expect "TSUNDOKU" "Your shelves are empty"

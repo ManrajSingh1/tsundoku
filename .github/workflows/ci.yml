@@ -31,6 +31,10 @@ jobs:
       - name: Unit tests
         run: ./gradlew --continue :core:model:test testDebugUnitTest --stacktrace
 
+      - name: Unit test summary
+        if: always()
+        run: python3 .github/scripts/test_summary.py "**/build/test-results/**/*.xml"
+
       # release is what is published. staging is the same minified build plus one screen
       # that lets the smoke test start an import without a file picker.
       - name: Build the release and staging APKs
@@ -132,9 +136,15 @@ jobs:
           profile: pixel_6
           disable-animations: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          # The smoke test goes first, while the emulator is fresh; the Gradle build that
+          # the instrumented tests need loads the machine enough to stall the launcher.
           script: |
-            ./gradlew :core:database:connectedDebugAndroidTest :core:data:connectedDebugAndroidTest --stacktrace
             bash .github/scripts/smoke.sh
+            ./gradlew :core:database:connectedDebugAndroidTest :core:data:connectedDebugAndroidTest --stacktrace
+
+      - name: Instrumented test summary
+        if: always()
+        run: python3 .github/scripts/test_summary.py "**/build/outputs/androidTest-results/**/*.xml"
 
       - uses: actions/upload-artifact@v4
         if: always()
