@@ -124,7 +124,7 @@ jobs:
     name: Tests on an emulator
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 40
     permissions:
       contents: write
     steps:
@@ -170,7 +170,7 @@ jobs:
           # The smoke test goes first, while the emulator is fresh; the Gradle build that
           # the instrumented tests need loads the machine enough to stall the launcher.
           script: |
-            bash .github/scripts/smoke.sh
+            timeout 25m bash .github/scripts/smoke.sh
             ./gradlew :core:database:connectedDebugAndroidTest :core:data:connectedDebugAndroidTest :feature:library:connectedDebugAndroidTest --stacktrace
 
       - name: Instrumented test summary

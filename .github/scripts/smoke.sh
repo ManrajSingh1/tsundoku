@@ -10,7 +10,13 @@ APP=io.github.manrajsingh1.tsundoku
 STAGING=$APP.staging
 SHOTS=shots
 LOGS=smoke-logs
+LOGCAT_PID=
 mkdir -p "$SHOTS" "$LOGS"
+
+# No adb command may wait for ever. If the emulator dies, adb's own behaviour is to wait for
+# it to come back, which once held a job until its 45-minute limit.
+ADB="$ADB"
+adb() { timeout 180 "$ADB" "$@"; }
 
 shot() { adb exec-out screencap -p > "$SHOTS/$1.png"; }
 
@@ -91,6 +97,17 @@ PY
 # thing anyone needs, and the full logcat is only in a downloadable artifact.
 finish() {
   status=$?
+  kill "$LOGCAT_PID" 2> /dev/null || true
+  if ! timeout 20 "$ADB" get-state > /dev/null 2>&1; then
+    echo "--- the emulator is no longer reachable. What the host knows:"
+    timeout 20 "$ADB" devices || true
+    pgrep -fa "qemu-system|emulator" | cut -c1-200 || echo "No emulator process is running."
+    free -m || true
+    sudo dmesg 2> /dev/null | grep -iE "out of memory|killed process|oom-kill|segfault" | tail -10 || true
+    echo "--- the last of the device log before it went:"
+    tail -120 "$LOGS/logcat-live.txt" || true
+    exit "$status"
+  fi
   adb logcat -d > "$LOGS/logcat.txt" || true
   if [ "$status" -ne 0 ]; then
     echo "--- the smoke test failed; crashes and hangs in the device log:"
@@ -141,6 +158,9 @@ adb shell settings put global hide_error_dialogs 1
 sleep 20
 dump
 adb logcat -c
+# A running copy of the device log, kept on the host, so its last lines survive the emulator.
+"$ADB" logcat -v time > "$LOGS/logcat-live.txt" 2> /dev/null &
+LOGCAT_PID=$!
 
 # 1. A first launch with nothing in the library.
 launch "$STAGING/$APP.MainActivity"
