@@ -202,10 +202,10 @@ sleep 3
 tap "The Third Volume"
 describe "an open book"
 shot 04-open-book
-expect "The Third Volume" "A. Author · vol. 3 · CBZ" "Book 1 of 2"
-tap "Next book"
-describe "the next book"
-expect "Book 2 of 2"
+expect "The Third Volume" "A. Author · vol. 3 · CBZ" "Book 2 of 2"
+tap "Previous book"
+describe "the book before it"
+expect "Book 1 of 2"
 adb shell input keyevent KEYCODE_BACK
 sleep 3
 describe "back in the library"
@@ -218,7 +218,7 @@ tap "More options"
 tap "Edit shelves"
 describe "edit mode"
 expect "Tap a book to move or remove it" "Done" "Add files to Manga"
-tap "The Third Volume"
+tap "Quiet Shelf"
 describe "a selected book"
 shot 05-edit-selected
 expect "1 of 2 · Manga"
@@ -257,7 +257,7 @@ describe "at 200% text size"
 expect "Manga" "3 books" "Quiet Shelf"
 tap "More options"
 tap "Edit shelves"
-tap "Quiet Shelf"
+tap "The Third Volume"
 describe "edit mode at 200% text size"
 shot 11-largest-text-editing
 expect "1 of 3 · Manga" "Move left" "Move right" "Next shelf" "Remove" "Done"
@@ -276,13 +276,13 @@ expect "Manga" "Pick a book"
 tap "The Third Volume"
 describe "tablet, landscape: a book open beside the library"
 shot 12-tablet-two-panes
-expect "Manga" "3 books" "Book 3 of 3" "Add books"
+expect "Manga" "3 books" "Book 1 of 3" "Add books"
 tap "More options"
 tap "Edit shelves"
 tap "Quiet Shelf"
 describe "tablet, landscape: editing beside the open book"
 shot 13-tablet-editing
-expect "1 of 3 · Manga" "Book 3 of 3"
+expect "3 of 3 · Manga" "Book 1 of 3"
 tap "Done"
 fail_on_crash
 
