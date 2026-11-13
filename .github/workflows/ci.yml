@@ -40,6 +40,14 @@ jobs:
       - name: Build the release and staging APKs
         run: ./gradlew :app:assembleRelease :app:assembleStaging --stacktrace
 
+      # Report only for now: prints what Android lint finds without failing the build.
+      - name: Android lint
+        run: |
+          ./gradlew :app:lintRelease --continue || true
+          for report in app/build/reports/lint-results-release.txt app/build/intermediates/lint_intermediate_text_report/release/lintReportRelease/lint-results-release.txt; do
+            if [ -f "$report" ]; then cat "$report" | tail -80; break; fi
+          done
+
       - name: Collect the APKs
         run: |
           mkdir apk

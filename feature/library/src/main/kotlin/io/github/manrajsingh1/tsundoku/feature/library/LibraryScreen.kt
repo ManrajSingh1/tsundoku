@@ -182,25 +182,22 @@ private fun BookRow(book: Book) {
             Text(
                 text = book.title,
                 style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
             val byline = listOfNotNull(seriesLine(book), book.author).joinToString(" · ")
             if (byline.isNotEmpty()) {
+                // No line limit: at large text sizes these wrap instead of losing their ends.
                 Text(
                     text = byline,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Text(
                 text = detailLine(book),
                 style = MaterialTheme.typography.bodySmall,
                 color = if (book.isMissing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
         }
     }

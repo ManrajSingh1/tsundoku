@@ -159,7 +159,8 @@ adb shell settings put system font_scale 2.0
 sleep 4
 shot 04-largest-text
 describe "at 200% text size"
-expect "The Third Volume" "A Test Novel"
+# Fewer books fit on screen at this size; the ones that do must be shown in full.
+expect "Quarterly report" "The Third Volume" "Test Manga, vol. 3 · A. Author" "CBZ · 6 pages · Right to left"
 adb shell settings put system font_scale 1.0
 sleep 2
 
