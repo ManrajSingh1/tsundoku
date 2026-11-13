@@ -69,7 +69,7 @@ fun LibraryRoute(
     val stateHolder = rememberSaveableStateHolder()
 
     BoxWithConstraints(modifier.fillMaxSize()) {
-        val panes = paneLayoutFor(maxWidth.value, hasVerticalFold)
+        val panes = paneLayoutFor(maxWidth.value, maxHeight.value, hasVerticalFold)
         val showLibrary = panes.twoPane || open == null
         val showShelf = panes.twoPane || open != null
 

@@ -10,27 +10,37 @@ class LayoutTest {
     @Test
     fun `phones and narrow windows get one pane`() {
         for (width in listOf(320f, 411f, 599f, 700f, 839f)) {
-            assertEquals("at $width dp", false, paneLayoutFor(width, hasVerticalFold = false).twoPane)
+            assertEquals("at $width dp", false, paneLayoutFor(width, 900f, hasVerticalFold = false).twoPane)
         }
     }
 
     @Test
     fun `wide windows get two panes split as Samsung recommends`() {
-        assertEquals(PaneLayout(twoPane = true, listFraction = 0.42f), paneLayoutFor(840f, hasVerticalFold = false))
-        assertEquals(PaneLayout(twoPane = true, listFraction = 0.42f), paneLayoutFor(959f, hasVerticalFold = false))
-        assertEquals(PaneLayout(twoPane = true, listFraction = 0.38f), paneLayoutFor(960f, hasVerticalFold = false))
-        assertEquals(PaneLayout(twoPane = true, listFraction = 0.38f), paneLayoutFor(1280f, hasVerticalFold = false))
+        val narrower = PaneLayout(twoPane = true, listFraction = 0.42f)
+        val wider = PaneLayout(twoPane = true, listFraction = 0.38f)
+        assertEquals(narrower, paneLayoutFor(840f, 800f, hasVerticalFold = false))
+        assertEquals(narrower, paneLayoutFor(959f, 800f, hasVerticalFold = false))
+        assertEquals(wider, paneLayoutFor(960f, 800f, hasVerticalFold = false))
+        assertEquals(wider, paneLayoutFor(1280f, 800f, hasVerticalFold = false))
     }
 
     @Test
     fun `an unfolded foldable is split in half at the hinge`() {
-        assertEquals(PaneLayout(twoPane = true, listFraction = 0.5f), paneLayoutFor(690f, hasVerticalFold = true))
-        assertEquals(PaneLayout(twoPane = true, listFraction = 0.5f), paneLayoutFor(1000f, hasVerticalFold = true))
+        val halves = PaneLayout(twoPane = true, listFraction = 0.5f)
+        assertEquals(halves, paneLayoutFor(690f, 829f, hasVerticalFold = true))
+        assertEquals(halves, paneLayoutFor(1000f, 700f, hasVerticalFold = true))
     }
 
     @Test
     fun `a fold in a window too narrow for two panes is ignored`() {
-        assertEquals(false, paneLayoutFor(400f, hasVerticalFold = true).twoPane)
+        assertEquals(false, paneLayoutFor(400f, 900f, hasVerticalFold = true).twoPane)
+    }
+
+    @Test
+    fun `a phone on its side is wide but too short for two panes`() {
+        assertEquals(false, paneLayoutFor(891f, 411f, hasVerticalFold = false).twoPane)
+        assertEquals(false, paneLayoutFor(960f, 479f, hasVerticalFold = true).twoPane)
+        assertEquals(true, paneLayoutFor(960f, 480f, hasVerticalFold = false).twoPane)
     }
 
     @Test

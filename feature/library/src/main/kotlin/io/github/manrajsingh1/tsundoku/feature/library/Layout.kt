@@ -13,8 +13,12 @@ internal data class PaneLayout(
  * One pane on phones and narrow windows; the library beside the open shelf once there is
  * room. The shares follow Samsung's large-screen guidance: 38:62 from 960 dp, 42:58 below
  * that, and half each either side of a foldable's hinge.
+ *
+ * A window can be wide and still too short for two panes: a phone on its side is over
+ * 840 dp wide but barely 400 dp tall, and each pane would show a sliver. It keeps one pane.
  */
-internal fun paneLayoutFor(widthDp: Float, hasVerticalFold: Boolean): PaneLayout = when {
+internal fun paneLayoutFor(widthDp: Float, heightDp: Float, hasVerticalFold: Boolean): PaneLayout = when {
+    heightDp < MIN_TWO_PANE_HEIGHT_DP -> PaneLayout(twoPane = false, listFraction = 1f)
     hasVerticalFold && widthDp >= MEDIUM_WIDTH_DP -> PaneLayout(twoPane = true, listFraction = 0.5f)
     widthDp >= 960f -> PaneLayout(twoPane = true, listFraction = 0.38f)
     widthDp >= EXPANDED_WIDTH_DP -> PaneLayout(twoPane = true, listFraction = 0.42f)
@@ -23,6 +27,7 @@ internal fun paneLayoutFor(widthDp: Float, hasVerticalFold: Boolean): PaneLayout
 
 private const val MEDIUM_WIDTH_DP = 600f
 private const val EXPANDED_WIDTH_DP = 840f
+private const val MIN_TWO_PANE_HEIGHT_DP = 480f
 
 /**
  * How big a spine is drawn, in dp. Thickness follows the page count and height follows the

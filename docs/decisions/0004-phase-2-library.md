@@ -64,7 +64,8 @@ here in outline only: the open shelf is a stand-in until the carousel is built i
 and that screen's opening animation and predictive-back behaviour will decide how
 navigation should work. Until then the layout is a small amount of plain code:
 
-- under 840 dp wide: one pane, the open shelf covers the library, back returns;
+- under 840 dp wide, or under 480 dp tall (a phone on its side): one pane, the open shelf
+  covers the library, back returns;
 - 840 dp and wider: library and open shelf side by side, 42:58, or 38:62 from 960 dp;
 - a vertical hinge in a window at least 600 dp wide: half each.
 
