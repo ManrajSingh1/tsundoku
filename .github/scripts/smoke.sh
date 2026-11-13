@@ -15,7 +15,7 @@ mkdir -p "$SHOTS" "$LOGS"
 
 # No adb command may wait for ever. If the emulator dies, adb's own behaviour is to wait for
 # it to come back, which once held a job until its 45-minute limit.
-ADB="$ADB"
+ADB="$(command -v adb)"
 adb() { timeout 180 "$ADB" "$@"; }
 
 shot() { adb exec-out screencap -p > "$SHOTS/$1.png"; }
