@@ -12,8 +12,8 @@ Every version below was read from its official release page on the date above.
 | Navigation 3 | 1.2.1 | Chosen over Navigation 2. |
 | Room 3 | 3.0.3 | `androidx.room3`, KSP only. |
 | Hilt | 2.59.2 or newer | 2.59 is the first release that supports Android Gradle plugin 9. |
-| androidx.pdf | 1.0.0-beta01 | Provisional PDF engine. minSdk 28. Compose viewer still experimental. |
-| Readium Kotlin Toolkit | 3.4.0 | EPUB engine. minSdk 24. BSD-3-Clause. |
+| androidx.pdf | 1.0.0-beta01 | Fallback PDF engine. minSdk 28. Compose viewer still experimental. |
+| Readium Kotlin Toolkit | 3.4.0 | EPUB engine, and PDF through its PDFium adapter. minSdk 24. BSD-3-Clause. Needs core library desugaring. |
 
 ## SDK levels
 
@@ -21,13 +21,8 @@ Every version below was read from its official release page on the date above.
 - targetSdk 36: required by Google Play since 31 August 2026.
 - compileSdk 37.
 
-## Provisional until the phone spike
+## Settled by the phone spikes
 
-- PDF engine: androidx.pdf, with Readium's PDFium adapter as the fallback.
-- 3D carousel: kept if it passes the frame-rate test on a mid-range Galaxy, otherwise the
-  flat fallback ships.
-
-## Not decided here
-
-- Package id. The spike uses `io.github.manrajsingh1.tsundoku.spike` and is thrown away.
-- Whether right-to-left series also mirror the shelf and carousel order in v1.0.
+The PDF engine, the 3D carousel, the package id and manga reading direction were left open
+here. They are settled in [0002](0002-phase-0-spike-results.md): Readium's PDFium adapter
+is the v1 PDF engine and androidx.pdf the fallback, reversing the provisional pick above.
