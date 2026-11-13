@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Three books on a shelf, kept inside the 66dp circle every launcher mask leaves visible. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#F2C14E"
+        android:pathData="M34,37h11v37h-11z" />
+    <path
+        android:fillColor="#F3E9DC"
+        android:pathData="M48,31h12v43h-12z" />
+    <path
+        android:fillColor="#D98E5F"
+        android:pathData="M63,41h11v33h-11z" />
+    <path
+        android:fillColor="#F3E9DC"
+        android:pathData="M30,75h48v3h-48z" />
+</vector>

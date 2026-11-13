@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_import_running">Adding %1$d of %2$d</string>
+    <plurals name="feature_import_added">
+        <item quantity="one">Added %d book</item>
+        <item quantity="other">Added %d books</item>
+    </plurals>
+    <string name="feature_import_nothing_added">Nothing new was added</string>
+    <plurals name="feature_import_duplicates">
+        <item quantity="one">%d was already in your library</item>
+        <item quantity="other">%d were already in your library</item>
+    </plurals>
+    <plurals name="feature_import_unsupported">
+        <item quantity="one">%d is not a CBZ, EPUB or PDF</item>
+        <item quantity="other">%d are not CBZ, EPUB or PDF</item>
+    </plurals>
+    <plurals name="feature_import_failed">
+        <item quantity="one">%d could not be read</item>
+        <item quantity="other">%d could not be read</item>
+    </plurals>
+    <string name="feature_import_dismiss">Dismiss</string>
+</resources>
