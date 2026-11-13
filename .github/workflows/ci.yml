@@ -166,7 +166,10 @@ jobs:
           ram-size: 4096M
           profile: pixel_6
           disable-animations: false
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          # swangle: OpenGL ES through ANGLE on SwiftShader's Vulkan. The older SwiftShader
+          # OpenGL ES translator (swiftshader_indirect) crashed the emulator the first time
+          # the shelves were drawn.
+          emulator-options: -no-snapshot-save -no-window -gpu swangle_indirect -noaudio -no-boot-anim
           # The smoke test goes first, while the emulator is fresh; the Gradle build that
           # the instrumented tests need loads the machine enough to stall the launcher.
           script: |

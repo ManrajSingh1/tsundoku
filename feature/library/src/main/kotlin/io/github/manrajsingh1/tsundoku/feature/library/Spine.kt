@@ -142,16 +142,22 @@ internal fun Spine(
                     constraints = Constraints(maxWidth = titleLength),
                 )
                 // A little light down the left and shade down the right, so it reads as round.
-                val shading = Brush.horizontalGradient(
-                    0f to Color.White.copy(alpha = 0.10f),
-                    0.25f to Color.Transparent,
-                    0.75f to Color.Transparent,
-                    1f to Color.Black.copy(alpha = 0.20f),
+                val band = width * 0.25f
+                val light = Brush.horizontalGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.10f), Color.Transparent),
+                    startX = 0f,
+                    endX = band,
+                )
+                val shade = Brush.horizontalGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.20f)),
+                    startX = width - band,
+                    endX = width,
                 )
 
                 onDrawBehind {
                     drawRect(spineColor)
-                    drawRect(shading)
+                    drawRect(brush = light, size = Size(band, height))
+                    drawRect(brush = shade, topLeft = Offset(width - band, 0f), size = Size(band, height))
                     drawRect(
                         color = textColor,
                         topLeft = Offset(width * 0.2f, edge),
