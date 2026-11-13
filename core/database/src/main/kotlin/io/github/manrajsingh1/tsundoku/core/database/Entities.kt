@@ -106,6 +106,12 @@ data class ImportItemEntity(
     val displayName: String? = null,
     val message: String? = null,
     val createdAt: Long,
+    /**
+     * The shelf the user was adding to, or null to shelve by format. Kept as a plain number,
+     * not a foreign key: if the shelf is deleted before the import runs, the book falls back
+     * to its format's shelf.
+     */
+    val targetShelfId: Long? = null,
 )
 
 /** A book together with the shelf it is on and its place there. */

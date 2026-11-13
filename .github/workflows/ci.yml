@@ -52,6 +52,18 @@ jobs:
             if [ -f "$report" ]; then grep -E "Warning:|Error:|errors, [0-9]+ warnings" "$report" | sed "s#$PWD/##"; break; fi
           done
 
+      # Report only for now: the style check runs as a standalone tool, so it cannot break
+      # the build or slow Gradle down. It becomes a failing check once the report is clean.
+      - name: Kotlin style (ktlint)
+        run: |
+          curl -sSLo ktlint https://github.com/pinterest/ktlint/releases/latest/download/ktlint || exit 0
+          chmod +x ktlint
+          ./ktlint --version || exit 0
+          ./ktlint --relative "**/src/**/*.kt" "**/*.kts" "!**/build/**" > ktlint.txt 2>&1 || true
+          echo "ktlint findings: $(grep -c ':[0-9]*:[0-9]*:' ktlint.txt || true)"
+          sed -E 's/^.*\((standard:[a-z-]+)\)$/\1/' ktlint.txt | grep '^standard:' | sort | uniq -c | sort -rn | head -20
+          head -60 ktlint.txt
+
       - name: Collect the APKs
         run: |
           mkdir apk

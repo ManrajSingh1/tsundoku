@@ -66,6 +66,101 @@ abstract class ShelfDao {
     @Query("DELETE FROM shelves WHERE id = :id")
     abstract suspend fun deleteShelf(id: Long)
 
+    @Query("SELECT * FROM shelves ORDER BY position")
+    abstract suspend fun allShelves(): List<ShelfEntity>
+
+    @Query("SELECT * FROM shelves WHERE id = :id")
+    abstract suspend fun findShelf(id: Long): ShelfEntity?
+
+    @Query("UPDATE shelves SET name = :name WHERE id = :id")
+    abstract suspend fun renameShelf(id: Long, name: String)
+
+    @Query("SELECT * FROM shelf_books WHERE shelfId = :shelfId ORDER BY position")
+    abstract suspend fun links(shelfId: Long): List<ShelfBookEntity>
+
+    @Query("SELECT * FROM shelf_books WHERE bookId = :bookId LIMIT 1")
+    abstract suspend fun linkFor(bookId: Long): ShelfBookEntity?
+
+    @Query("UPDATE shelf_books SET position = :position WHERE bookId = :bookId")
+    abstract suspend fun setBookPosition(bookId: Long, position: Int)
+
+    @Query("UPDATE shelf_books SET shelfId = :shelfId, position = :position WHERE bookId = :bookId")
+    abstract suspend fun setBookShelf(bookId: Long, shelfId: Long, position: Int)
+
+    /**
+     * Adds a book at the end of the shelf with [preferredShelfId] if there still is one, and
+     * otherwise of the shelf named [fallbackName], created if need be.
+     */
+    @Transaction
+    open suspend fun addBookToShelfOrDefault(book: BookEntity, preferredShelfId: Long?, fallbackName: String): Long {
+        val preferred = preferredShelfId?.let { findShelf(it) }
+        val shelfId = preferred?.id
+            ?: findByName(fallbackName)?.id
+            ?: insertShelf(ShelfEntity(name = fallbackName, position = nextShelfPosition()))
+        val bookId = insertBook(book)
+        insertLink(ShelfBookEntity(shelfId = shelfId, bookId = bookId, position = nextBookPosition(shelfId)))
+        return bookId
+    }
+
+    /**
+     * Moves a book [delta] places along its shelf, stopping at either end. Returns false if
+     * it did not move. The whole shelf is renumbered from zero, so gaps left by removed
+     * books never build up.
+     */
+    @Transaction
+    open suspend fun moveBook(bookId: Long, delta: Int): Boolean {
+        val link = linkFor(bookId) ?: return false
+        val order = links(link.shelfId)
+        val from = order.indexOfFirst { it.bookId == bookId }
+        if (from < 0) return false
+        val to = (from + delta).coerceIn(0, order.lastIndex)
+        if (to == from) return false
+        val reordered = order.toMutableList()
+        reordered.add(to, reordered.removeAt(from))
+        reordered.forEachIndexed { index, item ->
+            if (item.position != index) setBookPosition(item.bookId, index)
+        }
+        return true
+    }
+
+    /**
+     * Moves a book to the end of the shelf after its own, going round from the last shelf to
+     * the first. Returns the shelf it landed on, or null if there is no other shelf.
+     */
+    @Transaction
+    open suspend fun moveBookToNextShelf(bookId: Long): ShelfEntity? {
+        val link = linkFor(bookId) ?: return null
+        val shelves = allShelves()
+        if (shelves.size < 2) return null
+        val index = shelves.indexOfFirst { it.id == link.shelfId }
+        val target = shelves[(index + 1) % shelves.size]
+        setBookShelf(bookId, target.id, nextBookPosition(target.id))
+        return target
+    }
+
+    @Transaction
+    open suspend fun createShelf(name: String): Long =
+        insertShelf(ShelfEntity(name = name, position = nextShelfPosition()))
+
+    /**
+     * Deletes a shelf and moves its books, in order, to the end of the first shelf that is
+     * left. The last remaining shelf cannot be deleted: its books would have nowhere to go.
+     * Returns the shelf the books moved to, or null if nothing was deleted.
+     */
+    @Transaction
+    open suspend fun deleteShelfKeepingBooks(shelfId: Long): ShelfEntity? {
+        val shelves = allShelves()
+        if (shelves.none { it.id == shelfId }) return null
+        val target = shelves.firstOrNull { it.id != shelfId } ?: return null
+        var position = nextBookPosition(target.id)
+        for (link in links(shelfId)) {
+            setBookShelf(link.bookId, target.id, position)
+            position++
+        }
+        deleteShelf(shelfId)
+        return target
+    }
+
     /**
      * Adds a book at the end of the named shelf, creating the shelf if this is its first
      * book. One transaction: a book is never left in the library without a shelf.

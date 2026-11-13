@@ -29,6 +29,12 @@ class LibraryViewModelTest {
     private class FakeLibraryRepository : LibraryRepository {
         val shelves = MutableSharedFlow<List<ShelfWithBooks>>(replay = 1)
         override fun observeShelves(): Flow<List<ShelfWithBooks>> = shelves
+        override suspend fun moveBook(bookId: Long, delta: Int) = Unit
+        override suspend fun moveBookToNextShelf(bookId: Long): Shelf? = null
+        override suspend fun removeBook(bookId: Long) = Unit
+        override suspend fun createShelf(name: String): Long = 0L
+        override suspend fun renameShelf(shelfId: Long, name: String) = Unit
+        override suspend fun deleteShelf(shelfId: Long): Shelf? = null
     }
 
     private val repository = FakeLibraryRepository()
