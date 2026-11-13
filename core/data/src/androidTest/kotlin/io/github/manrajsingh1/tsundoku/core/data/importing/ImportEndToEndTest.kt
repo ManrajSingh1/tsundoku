@@ -148,13 +148,13 @@ class ImportEndToEndTest {
     }
 
     @Test
-    fun theThreeFormatsLandOnThreeShelvesInTheOrderTheyArrived() = runBlocking {
+    fun theThreeFormatsLandOnThreeShelvesThatKeepTheirOrderWhateverArrivesFirst() = runBlocking {
         importer.import(Uri.fromFile(Fixtures.pdf(file("a.pdf"))))
         importer.import(Uri.fromFile(Fixtures.cbz(file("b.cbz"))))
         importer.import(Uri.fromFile(Fixtures.epub(file("c.epub"))))
 
         val shelves = library.observeShelves().first()
-        assertEquals(listOf("Documents", "Manga", "Novels"), shelves.map { it.shelf.name })
+        assertEquals(listOf("Manga", "Novels", "Documents"), shelves.map { it.shelf.name })
         assertEquals(listOf(1, 1, 1), shelves.map { it.books.size })
     }
 

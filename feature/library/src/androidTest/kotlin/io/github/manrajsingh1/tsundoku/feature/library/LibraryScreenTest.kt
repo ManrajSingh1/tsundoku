@@ -159,7 +159,7 @@ class LibraryScreenTest {
         compose.onNodeWithText("Tap a book to move or remove it").assertIsDisplayed()
 
         compose.onNodeWithText("Done").performClick()
-        compose.onNodeWithText("Add books").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Add books").assertIsDisplayed().assertHasClickAction()
     }
 
     @Test

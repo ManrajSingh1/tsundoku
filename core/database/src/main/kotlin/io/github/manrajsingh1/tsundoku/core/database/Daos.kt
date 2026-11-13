@@ -42,13 +42,14 @@ abstract class BookDao {
 @Dao
 abstract class ShelfDao {
 
-    @Query("SELECT * FROM shelves ORDER BY position")
+    @Query("SELECT * FROM shelves ORDER BY position, id")
     abstract fun observeAll(): Flow<List<ShelfEntity>>
 
     @Query("SELECT * FROM shelves WHERE name = :name LIMIT 1")
     abstract suspend fun findByName(name: String): ShelfEntity?
 
-    @Query("SELECT COALESCE(MAX(position), -1) + 1 FROM shelves")
+    /** After every other shelf, and never among the default shelves' places below zero. */
+    @Query("SELECT MAX(COALESCE(MAX(position), -1) + 1, 0) FROM shelves")
     abstract suspend fun nextShelfPosition(): Int
 
     @Query("SELECT COALESCE(MAX(position), -1) + 1 FROM shelf_books WHERE shelfId = :shelfId")
@@ -66,7 +67,7 @@ abstract class ShelfDao {
     @Query("DELETE FROM shelves WHERE id = :id")
     abstract suspend fun deleteShelf(id: Long)
 
-    @Query("SELECT * FROM shelves ORDER BY position")
+    @Query("SELECT * FROM shelves ORDER BY position, id")
     abstract suspend fun allShelves(): List<ShelfEntity>
 
     @Query("SELECT * FROM shelves WHERE id = :id")
@@ -89,14 +90,19 @@ abstract class ShelfDao {
 
     /**
      * Adds a book at the end of the shelf with [preferredShelfId] if there still is one, and
-     * otherwise of the shelf named [fallbackName], created if need be.
+     * otherwise of the shelf named [fallbackName], created at [fallbackPosition] if need be.
      */
     @Transaction
-    open suspend fun addBookToShelfOrDefault(book: BookEntity, preferredShelfId: Long?, fallbackName: String): Long {
+    open suspend fun addBookToShelfOrDefault(
+        book: BookEntity,
+        preferredShelfId: Long?,
+        fallbackName: String,
+        fallbackPosition: Int,
+    ): Long {
         val preferred = preferredShelfId?.let { findShelf(it) }
         val shelfId = preferred?.id
             ?: findByName(fallbackName)?.id
-            ?: insertShelf(ShelfEntity(name = fallbackName, position = nextShelfPosition()))
+            ?: insertShelf(ShelfEntity(name = fallbackName, position = fallbackPosition))
         val bookId = insertBook(book)
         insertLink(ShelfBookEntity(shelfId = shelfId, bookId = bookId, position = nextBookPosition(shelfId)))
         return bookId

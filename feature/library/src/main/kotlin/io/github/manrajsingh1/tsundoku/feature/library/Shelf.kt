@@ -226,7 +226,7 @@ private fun ShelfStrip(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.bookcase.shelfBack)
-            .height((SpineMetrics.MAX_HEIGHT * scale).dp + SpineLift + 12.dp),
+            .height((SpineMetrics.MAX_HEIGHT * scale).dp + SpineLift + 8.dp),
         contentPadding = PaddingValues(horizontal = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.Bottom,

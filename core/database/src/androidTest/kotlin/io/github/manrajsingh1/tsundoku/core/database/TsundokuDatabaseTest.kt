@@ -3,6 +3,7 @@ package io.github.manrajsingh1.tsundoku.core.database
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.manrajsingh1.tsundoku.core.model.BookFormat
+import io.github.manrajsingh1.tsundoku.core.model.DefaultShelf
 import io.github.manrajsingh1.tsundoku.core.model.ImportState
 import io.github.manrajsingh1.tsundoku.core.model.ReadingDirection
 import kotlinx.coroutines.flow.first
@@ -266,5 +267,20 @@ class TsundokuDatabaseTest {
         assertEquals(7L, first.targetShelfId)
         queue.finish(first.id, ImportState.IMPORTED, "One", null)
         assertNull(queue.nextPending()!!.targetShelfId)
+    }
+
+    @Test
+    fun theDefaultShelvesStandInTheirOwnOrderAboveShelvesTheUserAdds() = runTest {
+        val shelves = database.shelfDao()
+        // Imported in the "wrong" order, with a shelf of the user's own made in between.
+        shelves.addBookToShelfOrDefault(book("a"), null, "Documents", DefaultShelf.DOCUMENTS.position)
+        shelves.addBookToShelfOrDefault(book("b"), null, "Manga", DefaultShelf.MANGA.position)
+        val mine = shelves.createShelf("Mine")
+        shelves.addBookToShelfOrDefault(book("c"), null, "Novels", DefaultShelf.NOVELS.position)
+        shelves.addBookToShelfOrDefault(book("d"), mine, "Manga", DefaultShelf.MANGA.position)
+
+        assertEquals(listOf("Manga", "Novels", "Documents", "Mine"), shelves.observeAll().first().map { it.name })
+        assertEquals(listOf("d"), order("Mine"))
+        assertEquals(listOf("b"), order("Manga"))
     }
 }

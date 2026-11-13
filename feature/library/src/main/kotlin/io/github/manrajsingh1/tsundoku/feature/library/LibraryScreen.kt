@@ -163,7 +163,11 @@ fun LibraryScreen(
             if (!editing && !showEmptyState && uiState is LibraryUiState.Loaded) {
                 ExtendedFloatingActionButton(
                     onClick = actions.onAddFiles,
-                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    // Material hides an extended button's text from screen readers and reads
+                    // the icon instead, so the icon carries the same words.
+                    icon = {
+                        Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.feature_library_add_books))
+                    },
                     text = { Text(stringResource(R.string.feature_library_add_books)) },
                 )
             }

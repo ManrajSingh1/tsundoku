@@ -106,7 +106,8 @@ class BookImporter @Inject constructor(
             lastOpenedAt = null,
         )
         val bookId = try {
-            shelfDao.addBookToShelfOrDefault(book, targetShelfId, shelfName(DefaultShelf.forFormat(format)))
+            val fallback = DefaultShelf.forFormat(format)
+            shelfDao.addBookToShelfOrDefault(book, targetShelfId, shelfName(fallback), fallback.position)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
