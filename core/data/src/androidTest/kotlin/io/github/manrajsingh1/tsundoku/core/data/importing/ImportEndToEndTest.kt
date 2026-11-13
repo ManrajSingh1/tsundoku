@@ -52,7 +52,7 @@ class ImportEndToEndTest {
             inspector = ReadiumPublicationInspector(context),
             covers = CoverStore(context),
         )
-        library = OfflineLibraryRepository(database.bookDao(), database.shelfDao())
+        library = OfflineLibraryRepository(database.bookDao(), database.shelfDao(), CoverStore(context), documents)
         workspace = File(context.cacheDir, "import-test").apply {
             deleteRecursively()
             mkdirs()
@@ -148,13 +148,13 @@ class ImportEndToEndTest {
     }
 
     @Test
-    fun theThreeFormatsLandOnThreeShelvesInTheOrderTheyArrived() = runBlocking {
+    fun theThreeFormatsLandOnThreeShelvesThatKeepTheirOrderWhateverArrivesFirst() = runBlocking {
         importer.import(Uri.fromFile(Fixtures.pdf(file("a.pdf"))))
         importer.import(Uri.fromFile(Fixtures.cbz(file("b.cbz"))))
         importer.import(Uri.fromFile(Fixtures.epub(file("c.epub"))))
 
         val shelves = library.observeShelves().first()
-        assertEquals(listOf("Documents", "Manga", "Novels"), shelves.map { it.shelf.name })
+        assertEquals(listOf("Manga", "Novels", "Documents"), shelves.map { it.shelf.name })
         assertEquals(listOf(1, 1, 1), shelves.map { it.books.size })
     }
 
@@ -245,5 +245,51 @@ class ImportEndToEndTest {
             queue.finished().map { it.state },
         )
         assertEquals(1, database.bookDao().count())
+    }
+
+    @Test
+    fun aBookAddedToAChosenShelfLandsThereWhateverItsFormat() = runBlocking {
+        val favourites = library.createShelf("Favourites")
+        val queue = database.importQueueDao()
+        val pdf = Fixtures.pdf(file("chosen.pdf"))
+        queue.insertAll(
+            listOf(
+                ImportItemEntity(
+                    uri = Uri.fromFile(pdf).toString(),
+                    isTree = false,
+                    createdAt = 1L,
+                    targetShelfId = favourites,
+                ),
+            ),
+        )
+
+        ImportRunner(queue, DocumentSource(context), importer).drain()
+
+        assertEquals(1, shelf("Favourites").size)
+        assertTrue("The book was also shelved by format", shelf("Documents").isEmpty())
+    }
+
+    @Test
+    fun aBookAddedToAShelfThatHasGoneFallsBackToItsFormatsShelf() = runBlocking {
+        val outcome = importer.import(Uri.fromFile(Fixtures.pdf(file("orphan.pdf"))), targetShelfId = 9_999L)
+
+        assertEquals(ImportState.IMPORTED, outcome.state)
+        assertEquals(1, shelf("Documents").size)
+    }
+
+    @Test
+    fun removingABookDeletesItsThumbnailButNeverTheUsersFile() = runBlocking {
+        val cbz = Fixtures.cbz(file("Keep Me v01.cbz"), pages = 2)
+        val id = importer.import(Uri.fromFile(cbz)).bookId!!
+        val cover = File(shelf("Manga").single().coverPath!!)
+        assertTrue(cover.exists())
+
+        library.removeBook(id)
+
+        assertTrue(shelf("Manga").isEmpty())
+        assertTrue("The thumbnail was left behind", !cover.exists())
+        assertTrue("The user's file was deleted", cbz.exists())
+        // Removed, not blocked: the same file can be added again later.
+        assertEquals(ImportState.IMPORTED, importer.import(Uri.fromFile(cbz)).state)
     }
 }

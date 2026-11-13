@@ -1,6 +1,7 @@
 package io.github.manrajsingh1.tsundoku.core.database
 
 import android.content.Context
+import androidx.room3.AutoMigration
 import androidx.room3.Database
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
@@ -8,8 +9,11 @@ import androidx.sqlite.driver.AndroidSQLiteDriver
 import kotlinx.coroutines.Dispatchers
 
 /**
- * The library's single source of truth. Schema version 1; every later version needs a
- * migration here and a test that runs it against the exported schema in `schemas/`.
+ * The library's single source of truth. Every schema version needs a migration here, and
+ * its exported schema committed in `schemas/` so the next migration can be generated
+ * against it.
+ *
+ * Version 2 added `import_queue.targetShelfId`.
  */
 @Database(
     entities = [
@@ -19,7 +23,8 @@ import kotlinx.coroutines.Dispatchers
         ReadingProgressEntity::class,
         ImportItemEntity::class,
     ],
-    version = 1,
+    version = 2,
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
     exportSchema = true,
 )
 abstract class TsundokuDatabase : RoomDatabase() {
@@ -36,8 +41,8 @@ abstract class TsundokuDatabase : RoomDatabase() {
         const val FILE_NAME = "tsundoku.db"
 
         // The platform's own SQLite, through Room's driver API: nothing native is bundled.
-        fun create(context: Context): TsundokuDatabase =
-            Room.databaseBuilder<TsundokuDatabase>(context.applicationContext, FILE_NAME)
+        fun create(context: Context, fileName: String = FILE_NAME): TsundokuDatabase =
+            Room.databaseBuilder<TsundokuDatabase>(context.applicationContext, fileName)
                 .setDriver(AndroidSQLiteDriver())
                 .setQueryCoroutineContext(Dispatchers.IO)
                 .build()

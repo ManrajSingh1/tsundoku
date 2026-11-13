@@ -1,54 +1,92 @@
 package io.github.manrajsingh1.tsundoku.feature.library
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import io.github.manrajsingh1.tsundoku.core.model.Book
-import io.github.manrajsingh1.tsundoku.core.model.ReadingDirection
+import io.github.manrajsingh1.tsundoku.core.model.Shelf
 import io.github.manrajsingh1.tsundoku.core.model.ShelfWithBooks
-import java.io.File
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.launch
+
+/** Everything the library screen can ask for. One object, so it is passed down as one. */
+@Stable
+class LibraryActions(
+    val onAddFiles: () -> Unit,
+    val onAddFolder: () -> Unit,
+    val onAddFilesToShelf: (shelfId: Long) -> Unit,
+    val onOpenBook: (bookId: Long) -> Unit,
+    val onSetEditing: (Boolean) -> Unit,
+    /** The book picked out in edit mode, or null for none. */
+    val onSelectBook: (bookId: Long?) -> Unit,
+    val onMoveBook: (bookId: Long, delta: Int) -> Unit,
+    val onMoveBookToNextShelf: (bookId: Long) -> Unit,
+    val onRemoveBook: (Book) -> Unit,
+    val onAddShelf: () -> Unit,
+    val onRenameShelf: (shelfId: Long, name: String) -> Unit,
+    val onDeleteShelf: (Shelf) -> Unit,
+)
 
 /**
- * The library as a plain list, shelf by shelf. This is the Phase 1 stand-in that proves
- * import works end to end; the bookshelf of spines replaces it in Phase 2.
+ * The library: every shelf as a row of spines standing on a plank. In edit mode a tapped
+ * spine is selected and the bar at the bottom moves or removes it.
+ *
+ * Following One UI, the top of the screen is for looking and the bottom for doing: the
+ * title and shelves sit above, and Add, Done and the edit actions sit within thumb reach.
  *
  * @param importStatus drawn above the shelves. A slot, so this feature does not depend on
  * the import feature.
@@ -57,33 +95,236 @@ import java.io.File
 @Composable
 fun LibraryScreen(
     uiState: LibraryUiState,
-    onAddFiles: () -> Unit,
-    onAddFolder: () -> Unit,
+    editing: Boolean,
+    selectedBookId: Long?,
+    actions: LibraryActions,
     modifier: Modifier = Modifier,
+    messages: Flow<LibraryMessage> = emptyFlow(),
     importStatus: @Composable () -> Unit = {},
 ) {
+    val shelves = (uiState as? LibraryUiState.Loaded)?.shelves.orEmpty()
+    val selected = remember(shelves, selectedBookId) { locateBook(shelves, selectedBookId) }
+    val showEmptyState = uiState is LibraryUiState.Loaded && uiState.isEmpty && !editing
+
+    // Asked about before they happen: neither can be undone from inside the app.
+    var removalAskedFor by rememberSaveable { mutableStateOf<Long?>(null) }
+    var shelfDeletionAskedFor by rememberSaveable { mutableStateOf<Long?>(null) }
+
+    val snackbars = remember { SnackbarHostState() }
+    LibraryMessages(messages, snackbars)
+
+    val focusManager = LocalFocusManager.current
+    val finishEditing = {
+        // Leaving a name field commits it, so a rename in progress is not lost.
+        focusManager.clearFocus()
+        actions.onSetEditing(false)
+    }
+
     // One UI's extended app bar: tall with a large title at rest, condensing as the list scrolls.
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
-        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        // The screen shrinks above the keyboard, so a shelf name being typed stays in view.
+        modifier = modifier.imePadding().nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
-                title = { Text(stringResource(R.string.feature_library_title)) },
+                title = {
+                    Text(
+                        stringResource(
+                            if (editing) R.string.feature_library_edit_title else R.string.feature_library_title,
+                        ),
+                    )
+                },
                 actions = {
-                    TextButton(onClick = onAddFiles) { Text(stringResource(R.string.feature_library_add_files)) }
-                    TextButton(onClick = onAddFolder) { Text(stringResource(R.string.feature_library_add_folder)) }
+                    if (!editing) {
+                        LibraryMenu(
+                            canEdit = shelves.isNotEmpty(),
+                            onEdit = { actions.onSetEditing(true) },
+                            onAddFiles = actions.onAddFiles,
+                            onAddFolder = actions.onAddFolder,
+                        )
+                    }
                 },
                 scrollBehavior = scrollBehavior,
             )
         },
-    ) { padding ->
-        when (uiState) {
-            LibraryUiState.Loading -> Box(Modifier.fillMaxSize().padding(padding))
-            is LibraryUiState.Loaded -> if (uiState.isEmpty) {
-                EmptyLibrary(onAddFiles, onAddFolder, importStatus, Modifier.fillMaxSize().padding(padding))
-            } else {
-                ShelfList(uiState.shelves, importStatus, padding)
+        bottomBar = {
+            if (editing) {
+                EditBar(
+                    selected = selected,
+                    shelfCount = shelves.size,
+                    onMove = { delta -> selected?.let { actions.onMoveBook(it.book.id, delta) } },
+                    onNextShelf = { selected?.let { actions.onMoveBookToNextShelf(it.book.id) } },
+                    onRemove = { removalAskedFor = selected?.book?.id },
+                    onDone = finishEditing,
+                )
             }
+        },
+        floatingActionButton = {
+            if (!editing && !showEmptyState && uiState is LibraryUiState.Loaded) {
+                ExtendedFloatingActionButton(
+                    onClick = actions.onAddFiles,
+                    // Material hides an extended button's text from screen readers and reads
+                    // the icon instead, so the icon carries the same words.
+                    icon = {
+                        Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.feature_library_add_books))
+                    },
+                    text = { Text(stringResource(R.string.feature_library_add_books)) },
+                )
+            }
+        },
+        snackbarHost = { SnackbarHost(snackbars) },
+    ) { padding ->
+        when {
+            uiState !is LibraryUiState.Loaded -> Box(Modifier.fillMaxSize().padding(padding))
+            showEmptyState -> EmptyLibrary(
+                onAddFiles = actions.onAddFiles,
+                onAddFolder = actions.onAddFolder,
+                importStatus = importStatus,
+                modifier = Modifier.fillMaxSize().padding(padding),
+            )
+            else -> ShelfList(
+                shelves = shelves,
+                editing = editing,
+                selected = selected,
+                actions = actions,
+                onAskRemoveBook = { removalAskedFor = it.id },
+                onAskDeleteShelf = { shelfDeletionAskedFor = it.id },
+                importStatus = importStatus,
+                padding = padding,
+            )
+        }
+    }
+
+    locateBook(shelves, removalAskedFor)?.book?.let { book ->
+        AlertDialog(
+            onDismissRequest = { removalAskedFor = null },
+            title = { Text(stringResource(R.string.feature_library_remove_title)) },
+            text = { Text(stringResource(R.string.feature_library_remove_body, book.title)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        removalAskedFor = null
+                        actions.onRemoveBook(book)
+                    },
+                ) { Text(stringResource(R.string.feature_library_remove)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { removalAskedFor = null }) {
+                    Text(stringResource(R.string.feature_library_cancel))
+                }
+            },
+        )
+    }
+
+    shelves.firstOrNull { it.shelf.id == shelfDeletionAskedFor }?.let { entry ->
+        val movesTo = shelves.firstOrNull { it.shelf.id != entry.shelf.id }?.shelf?.name.orEmpty()
+        val count = entry.books.size
+        AlertDialog(
+            onDismissRequest = { shelfDeletionAskedFor = null },
+            title = { Text(stringResource(R.string.feature_library_delete_shelf_title, entry.shelf.name)) },
+            text = {
+                Text(
+                    if (count == 0) {
+                        stringResource(R.string.feature_library_delete_shelf_body_empty)
+                    } else {
+                        pluralStringResource(R.plurals.feature_library_delete_shelf_body, count, count, movesTo)
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        shelfDeletionAskedFor = null
+                        actions.onDeleteShelf(entry.shelf)
+                    },
+                ) { Text(stringResource(R.string.feature_library_delete)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { shelfDeletionAskedFor = null }) {
+                    Text(stringResource(R.string.feature_library_cancel))
+                }
+            },
+        )
+    }
+}
+
+/**
+ * Tells the user what just happened. Removals are shown; moves are only spoken, because
+ * anyone looking at the screen has just watched the book move.
+ */
+@Composable
+private fun LibraryMessages(messages: Flow<LibraryMessage>, snackbars: SnackbarHostState) {
+    val resources = LocalResources.current
+    val view = LocalView.current
+    LaunchedEffect(messages, snackbars, resources) {
+        messages.collect { message ->
+            when (message) {
+                is LibraryMessage.BookMoved -> view.announceForAccessibility(
+                    resources.getString(R.string.feature_library_announce_moved, message.position, message.count),
+                )
+                is LibraryMessage.BookMovedToShelf -> view.announceForAccessibility(
+                    resources.getString(R.string.feature_library_announce_moved_shelf, message.shelfName),
+                )
+                is LibraryMessage.BookRemoved -> launch {
+                    snackbars.showSnackbar(resources.getString(R.string.feature_library_removed, message.title))
+                }
+                is LibraryMessage.ShelfDeleted -> launch {
+                    snackbars.showSnackbar(
+                        if (message.bookCount == 0) {
+                            resources.getString(R.string.feature_library_shelf_deleted_empty, message.name)
+                        } else {
+                            resources.getQuantityString(
+                                R.plurals.feature_library_shelf_deleted,
+                                message.bookCount,
+                                message.name,
+                                message.bookCount,
+                                message.movedTo,
+                            )
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** The More button at the far right of the app bar, where One UI puts it. */
+@Composable
+private fun LibraryMenu(
+    canEdit: Boolean,
+    onEdit: () -> Unit,
+    onAddFiles: () -> Unit,
+    onAddFolder: () -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }) {
+            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.feature_library_more))
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            if (canEdit) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.feature_library_edit_shelves)) },
+                    onClick = {
+                        open = false
+                        onEdit()
+                    },
+                )
+            }
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.feature_library_add_files)) },
+                onClick = {
+                    open = false
+                    onAddFiles()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.feature_library_add_folder)) },
+                onClick = {
+                    open = false
+                    onAddFolder()
+                },
+            )
         }
     }
 }
@@ -127,121 +368,66 @@ private fun EmptyLibrary(
 @Composable
 private fun ShelfList(
     shelves: List<ShelfWithBooks>,
+    editing: Boolean,
+    selected: BookPlace?,
+    actions: LibraryActions,
+    onAskRemoveBook: (Book) -> Unit,
+    onAskDeleteShelf: (Shelf) -> Unit,
     importStatus: @Composable () -> Unit,
     padding: PaddingValues,
 ) {
-    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = padding) {
+    val listState = rememberLazyListState()
+    val textMeasurer = rememberTextMeasurer(cacheSize = 64)
+    val layoutDirection = LocalLayoutDirection.current
+
+    // A book sent to the next shelf may land off screen; follow it there.
+    val selectedShelfId = selected?.shelf?.shelf?.id
+    val selectedShelfIndex = shelves.indexOfFirst { it.shelf.id == selectedShelfId }
+    LaunchedEffect(selectedShelfIndex) {
+        if (selectedShelfIndex >= 0) {
+            val item = selectedShelfIndex + SHELVES_START_AT
+            if (listState.layoutInfo.visibleItemsInfo.none { it.index == item }) listState.animateScrollToItem(item)
+        }
+    }
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize().testTag(SHELVES_TEST_TAG),
+        contentPadding = PaddingValues(
+            start = padding.calculateStartPadding(layoutDirection),
+            top = padding.calculateTopPadding(),
+            end = padding.calculateEndPadding(layoutDirection),
+            // Room for the last shelf to scroll clear of the Add button floating over it.
+            bottom = padding.calculateBottomPadding() + if (editing) 0.dp else 96.dp,
+        ),
+    ) {
         item(key = "import-status", contentType = "status") { importStatus() }
         for (entry in shelves) {
-            if (entry.books.isEmpty()) continue
             item(key = "shelf-${entry.shelf.id}", contentType = "shelf") {
-                ShelfHeader(name = entry.shelf.name, count = entry.books.size)
-            }
-            items(entry.books, key = { "book-${it.id}" }, contentType = { "book" }) { book ->
-                BookRow(book)
-            }
-        }
-    }
-}
-
-@Composable
-private fun ShelfHeader(name: String, count: Int) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 8.dp)
-            .semantics(mergeDescendants = true) { heading() },
-        verticalAlignment = Alignment.Bottom,
-    ) {
-        Text(
-            text = name,
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            text = pluralStringResource(R.plurals.feature_library_shelf_count, count, count),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun BookRow(book: Book) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 8.dp)
-            // One stop for TalkBack per book, read as a sentence, not five fragments.
-            .semantics(mergeDescendants = true) {},
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Cover(book)
-        Spacer(Modifier.width(16.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = book.title,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val byline = listOfNotNull(seriesLine(book), book.author).joinToString(" · ")
-            if (byline.isNotEmpty()) {
-                // No line limit: at large text sizes these wrap instead of losing their ends.
-                Text(
-                    text = byline,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                ShelfSection(
+                    entry = entry,
+                    editing = editing,
+                    selectedBookId = selected?.book?.id,
+                    canDelete = shelves.size > 1,
+                    hasOtherShelves = shelves.size > 1,
+                    textMeasurer = textMeasurer,
+                    actions = actions,
+                    onAskRemoveBook = onAskRemoveBook,
+                    onAskDeleteShelf = { onAskDeleteShelf(entry.shelf) },
+                    modifier = Modifier.animateItem(),
                 )
             }
-            Text(
-                text = detailLine(book),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (book.isMissing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        }
+        if (editing) {
+            item(key = "add-shelf", contentType = "add-shelf") {
+                AddShelfButton(onClick = actions.onAddShelf, modifier = Modifier.animateItem())
+            }
         }
     }
 }
 
-@Composable
-private fun Cover(book: Book) {
-    val shape = RoundedCornerShape(4.dp)
-    Box(
-        modifier = Modifier
-            .size(width = 56.dp, height = 84.dp)
-            .clip(shape)
-            // The spine colour shows while the thumbnail loads, and stays if there is none.
-            .background(Color(book.spineColor)),
-    ) {
-        val path = book.coverPath
-        if (path != null) {
-            AsyncImage(
-                model = File(path),
-                // Decorative: the row's text already names the book.
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-    }
-}
+/** Finds the list of shelves in UI tests. */
+internal const val SHELVES_TEST_TAG = "shelves"
 
-@Composable
-private fun seriesLine(book: Book): String? {
-    val series = book.series ?: return null
-    val volume = book.volume ?: return series
-    val number = if (volume % 1.0 == 0.0) volume.toInt().toString() else volume.toString()
-    return stringResource(R.string.feature_library_series_volume, series, number)
-}
-
-@Composable
-private fun detailLine(book: Book): String {
-    val parts = ArrayList<String>(4)
-    if (book.isMissing) parts.add(stringResource(R.string.feature_library_missing))
-    parts.add(book.format.name)
-    book.pageCount?.let { parts.add(pluralStringResource(R.plurals.feature_library_pages, it, it)) }
-    if (book.readingDirection == ReadingDirection.RIGHT_TO_LEFT) {
-        parts.add(stringResource(R.string.feature_library_right_to_left))
-    }
-    return parts.joinToString(" · ")
-}
+/** The shelves come after the import status in the list. */
+private const val SHELVES_START_AT = 1

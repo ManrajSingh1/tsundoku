@@ -1,6 +1,6 @@
 # Versions marked "checked" were read from their official release page on 2026-11-12/13
-# (see docs/decisions/0001). The rest are known-good versions that resolve; raise them
-# deliberately, one at a time.
+# (see docs/decisions/0001). The rest were raised on 2026-11-13 to the versions Android lint
+# named as current; raise them deliberately.
 [versions]
 agp = "9.5.1"                 # checked
 kotlin = "2.4.20"             # checked
@@ -10,19 +10,21 @@ hilt = "2.60.1"               # checked
 room = "3.0.3"                # checked
 sqlite = "2.7.1"
 readium = "3.4.0"             # checked
-activity = "1.10.1"
-coreKtx = "1.15.0"
-lifecycle = "2.9.0"
-work = "2.11.0"
-datastore = "1.1.1"
-coil = "3.3.0"
-palette = "1.0.0"
+activity = "1.13.0"
+window = "1.5.1"
+materialIconsCore = "1.7.8"    # the last release; Google no longer updates the icon library
+coreKtx = "1.19.1"
+lifecycle = "2.11.0"
+work = "2.12.0"
+datastore = "1.3.0"
+coil = "3.6.3"
+palette = "1.1.0"
 coroutines = "1.11.0"
 desugarJdkLibs = "2.1.5"
 junit = "4.13.2"
-androidxTestCore = "1.6.1"
-androidxTestRunner = "1.6.2"
-androidxTestExtJunit = "1.2.1"
+androidxTestCore = "1.7.0"
+androidxTestRunner = "1.7.0"
+androidxTestExtJunit = "1.3.0"
 
 [libraries]
 # Build logic
@@ -39,9 +41,13 @@ androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-compose-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core", version.ref = "materialIconsCore" }
+androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 
 # AndroidX
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity" }
+androidx-window = { group = "androidx.window", name = "window", version.ref = "window" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycle" }

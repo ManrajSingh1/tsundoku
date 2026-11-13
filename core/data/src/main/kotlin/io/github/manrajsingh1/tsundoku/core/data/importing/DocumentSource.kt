@@ -63,6 +63,15 @@ class DocumentSource @Inject constructor(
         }
     }
 
+    /** Gives back a lasting grant taken for a single picked file, when its book is removed. */
+    fun releaseReadPermission(uri: Uri) {
+        try {
+            resolver.releasePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        } catch (e: Exception) {
+            // There was no grant for exactly this file: it came in through a picked folder.
+        }
+    }
+
     /**
      * Every book inside a picked folder, searching sub-folders too. Bounded in depth and in
      * number so an enormous or looping tree cannot stall the import.

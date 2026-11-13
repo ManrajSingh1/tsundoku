@@ -44,13 +44,26 @@ jobs:
       - name: Build the release and staging APKs
         run: ./gradlew :app:assembleRelease :app:assembleStaging --stacktrace
 
-      # Report only for now: prints what Android lint finds without failing the build.
+      # Prints what Android lint finds. Errors fail the job, but only in its last step, so
+      # the APKs and the rest of the report are still produced.
       - name: Android lint
         run: |
-          ./gradlew :app:lintRelease --continue || true
+          ./gradlew :app:lintRelease --continue && touch lint-passed || true
           for report in app/build/reports/lint-results-release.txt app/build/intermediates/lint_intermediate_text_report/release/lintReportRelease/lint-results-release.txt; do
             if [ -f "$report" ]; then grep -E "Warning:|Error:|errors, [0-9]+ warnings" "$report" | sed "s#$PWD/##"; break; fi
           done
+
+      # Report only for now: the style check runs as a standalone tool, so it cannot break
+      # the build or slow Gradle down. It becomes a failing check once the report is clean.
+      - name: Kotlin style (ktlint)
+        run: |
+          curl -sSLo ktlint https://github.com/pinterest/ktlint/releases/latest/download/ktlint || exit 0
+          chmod +x ktlint
+          ./ktlint --version || exit 0
+          ./ktlint --relative "**/src/**/*.kt" "**/*.kts" "!**/build/**" > ktlint.txt 2>&1 || true
+          echo "ktlint findings: $(grep -c ':[0-9]*:[0-9]*:' ktlint.txt || true)"
+          sed -E 's/^.*\((standard:[a-z-]+)\)$/\1/' ktlint.txt | grep '^standard:' | sort | uniq -c | sort -rn | head -20
+          head -60 ktlint.txt
 
       - name: Collect the APKs
         run: |
@@ -102,6 +115,9 @@ jobs:
           path: apk/*.apk
           if-no-files-found: error
 
+      - name: Fail if Android lint found errors
+        run: test -f lint-passed || { echo "Android lint found errors; see the Android lint step."; exit 1; }
+
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -112,7 +128,7 @@ jobs:
     name: Tests on an emulator
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 40
     permissions:
       contents: write
     steps:
@@ -130,14 +146,21 @@ jobs:
           name: tsundoku-apks
           path: apk
 
+      # The build people already have installed, so the smoke test can upgrade from it.
+      - name: Fetch the previously published APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download preview-latest --repo "$GITHUB_REPOSITORY" --pattern tsundoku-preview.apk --dir apk-previous || echo "No previous preview."
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # Database and import tests run against real SQLite and the real reading engines, then
-      # the smoke test drives the minified app. Emulator speed is not evidence of anything.
+      # The smoke test drives the minified app; then database and import tests run against
+      # real SQLite and the real reading engines, and the library screen is driven through
+      # its accessibility tree. Emulator speed is not evidence of anything.
       - uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -147,12 +170,15 @@ jobs:
           ram-size: 4096M
           profile: pixel_6
           disable-animations: false
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          # swangle: OpenGL ES through ANGLE on SwiftShader's Vulkan. The older SwiftShader
+          # OpenGL ES translator (swiftshader_indirect) crashed the emulator the first time
+          # the shelves were drawn.
+          emulator-options: -no-snapshot-save -no-window -gpu swangle_indirect -noaudio -no-boot-anim
           # The smoke test goes first, while the emulator is fresh; the Gradle build that
           # the instrumented tests need loads the machine enough to stall the launcher.
           script: |
-            bash .github/scripts/smoke.sh
-            ./gradlew :core:database:connectedDebugAndroidTest :core:data:connectedDebugAndroidTest --stacktrace
+            timeout 25m bash .github/scripts/smoke.sh
+            ./gradlew :core:database:connectedDebugAndroidTest :core:data:connectedDebugAndroidTest :feature:library:connectedDebugAndroidTest --stacktrace
 
       - name: Instrumented test summary
         if: always()

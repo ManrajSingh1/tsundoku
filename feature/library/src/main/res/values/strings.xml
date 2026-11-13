@@ -5,16 +5,70 @@
     <string name="feature_library_empty_body">Add manga, comics, EPUBs and PDFs. Your files stay where they are; TSUNDOKU only remembers where to find them.</string>
     <string name="feature_library_add_files">Add files</string>
     <string name="feature_library_add_folder">Add folder</string>
+    <string name="feature_library_add_books">Add books</string>
     <plurals name="feature_library_shelf_count">
         <item quantity="one">%d book</item>
         <item quantity="other">%d books</item>
     </plurals>
-    <plurals name="feature_library_pages">
-        <item quantity="one">%d page</item>
-        <item quantity="other">%d pages</item>
-    </plurals>
-    <string name="feature_library_right_to_left">Right to left</string>
     <string name="feature_library_missing">File not found</string>
-    <!-- Volume number after a series name, e.g. "One Piece, vol. 12". -->
-    <string name="feature_library_series_volume">%1$s, vol. %2$s</string>
+    <string name="feature_library_empty_shelf">No books on this shelf yet</string>
+
+    <!-- Spoken by screen readers. Spine: "The Third Volume, volume 3, CBZ". -->
+    <string name="feature_library_volume_spoken">volume %1$s</string>
+    <!-- Completes "Double tap to …". -->
+    <string name="feature_library_action_open">open</string>
+    <string name="feature_library_action_select">select</string>
+    <string name="feature_library_action_deselect">deselect</string>
+    <string name="feature_library_a11y_next_shelf">Move to next shelf</string>
+    <string name="feature_library_a11y_remove">Remove from library</string>
+    <string name="feature_library_announce_moved">Moved to position %1$d of %2$d</string>
+    <string name="feature_library_announce_moved_shelf">Moved to %1$s</string>
+
+    <!-- The app bar's menu. -->
+    <string name="feature_library_more">More options</string>
+    <string name="feature_library_edit_shelves">Edit shelves</string>
+
+    <!-- Edit mode. -->
+    <string name="feature_library_edit_title">Edit shelves</string>
+    <string name="feature_library_edit_hint">Tap a book to move or remove it</string>
+    <!-- Where the selected book is, e.g. "2 of 5 · Manga". -->
+    <string name="feature_library_position">%1$d of %2$d · %3$s</string>
+    <string name="feature_library_move_left">Move left</string>
+    <string name="feature_library_move_right">Move right</string>
+    <string name="feature_library_next_shelf">Next shelf</string>
+    <string name="feature_library_remove">Remove</string>
+    <string name="feature_library_done">Done</string>
+    <string name="feature_library_cancel">Cancel</string>
+    <string name="feature_library_shelf_name_label">Shelf name</string>
+    <string name="feature_library_delete_shelf">Delete shelf %1$s</string>
+    <string name="feature_library_add_to_shelf">Add files to %1$s</string>
+    <string name="feature_library_add_shelf">Add shelf</string>
+    <string name="feature_library_new_shelf">New shelf</string>
+
+    <string name="feature_library_remove_title">Remove from library?</string>
+    <string name="feature_library_remove_body">“%1$s” will be taken off its shelf. The file itself is not deleted.</string>
+    <string name="feature_library_removed">Removed “%1$s”. The file was not deleted.</string>
+
+    <string name="feature_library_delete_shelf_title">Delete %1$s?</string>
+    <string name="feature_library_delete_shelf_body_empty">This shelf is empty.</string>
+    <plurals name="feature_library_delete_shelf_body">
+        <item quantity="one">Its %1$d book moves to %2$s. No files are deleted.</item>
+        <item quantity="other">Its %1$d books move to %2$s. No files are deleted.</item>
+    </plurals>
+    <string name="feature_library_delete">Delete</string>
+    <string name="feature_library_shelf_deleted_empty">Deleted %1$s.</string>
+    <plurals name="feature_library_shelf_deleted">
+        <item quantity="one">Deleted %1$s. %2$d book moved to %3$s.</item>
+        <item quantity="other">Deleted %1$s. %2$d books moved to %3$s.</item>
+    </plurals>
+
+    <!-- The open shelf. -->
+    <string name="feature_library_back">Back to library</string>
+    <string name="feature_library_previous_book">Previous book</string>
+    <string name="feature_library_next_book">Next book</string>
+    <string name="feature_library_book_position">Book %1$d of %2$d</string>
+    <!-- Volume number in a book's one-line description, e.g. "A. Author · vol. 3 · CBZ". -->
+    <string name="feature_library_volume_short">vol. %1$s</string>
+    <string name="feature_library_nothing_open_title">Pick a book</string>
+    <string name="feature_library_nothing_open_body">Tap a spine on a shelf to see the book here.</string>
 </resources>

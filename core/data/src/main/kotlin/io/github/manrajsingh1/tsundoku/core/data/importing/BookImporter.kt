@@ -44,7 +44,10 @@ class BookImporter @Inject constructor(
     private val covers: CoverStore,
 ) {
 
-    suspend fun import(uri: Uri): ImportOutcome = withContext(Dispatchers.IO) {
+    /**
+     * @param targetShelfId the shelf the user was adding to, or null to shelve by format.
+     */
+    suspend fun import(uri: Uri, targetShelfId: Long? = null): ImportOutcome = withContext(Dispatchers.IO) {
         val info = documents.describe(uri)
         val digest = documents.open(uri)?.use { ContentHash.digest(it) }
             ?: return@withContext failed(info, R.string.core_data_import_cannot_open)
@@ -103,7 +106,8 @@ class BookImporter @Inject constructor(
             lastOpenedAt = null,
         )
         val bookId = try {
-            shelfDao.addBookToShelf(book, shelfName(DefaultShelf.forFormat(format)))
+            val fallback = DefaultShelf.forFormat(format)
+            shelfDao.addBookToShelfOrDefault(book, targetShelfId, shelfName(fallback), fallback.position)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

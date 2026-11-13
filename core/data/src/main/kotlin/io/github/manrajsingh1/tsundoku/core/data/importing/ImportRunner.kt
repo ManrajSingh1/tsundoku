@@ -38,7 +38,14 @@ class ImportRunner @Inject constructor(
         }
         if (books.isNotEmpty()) {
             queue.insertAll(
-                books.map { ImportItemEntity(uri = it.toString(), isTree = false, createdAt = item.createdAt) },
+                books.map {
+                    ImportItemEntity(
+                        uri = it.toString(),
+                        isTree = false,
+                        createdAt = item.createdAt,
+                        targetShelfId = item.targetShelfId,
+                    )
+                },
             )
         }
         queue.delete(item.id)
@@ -46,7 +53,7 @@ class ImportRunner @Inject constructor(
 
     private suspend fun importFile(item: ImportItemEntity) {
         val outcome = try {
-            importer.import(item.uri.toUri())
+            importer.import(item.uri.toUri(), item.targetShelfId)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

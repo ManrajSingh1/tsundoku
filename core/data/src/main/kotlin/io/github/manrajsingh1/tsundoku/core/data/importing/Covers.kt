@@ -77,6 +77,17 @@ class CoverStore @Inject constructor(
         null
     }
 
+    /** Deletes a book's thumbnail. The user's own file is not touched. */
+    fun delete(coverPath: String) {
+        try {
+            val file = File(coverPath)
+            // Only ever a file of our own making, whatever path the database holds.
+            if (file.parentFile == directory) file.delete()
+        } catch (e: Exception) {
+            // A stray thumbnail costs a few kilobytes; it is not worth failing a removal over.
+        }
+    }
+
     /** A colour taken from the cover, to base the spine on. Not yet checked for contrast. */
     fun dominantColour(cover: Bitmap): Int? = try {
         val palette = Palette.from(cover).maximumColorCount(12).generate()

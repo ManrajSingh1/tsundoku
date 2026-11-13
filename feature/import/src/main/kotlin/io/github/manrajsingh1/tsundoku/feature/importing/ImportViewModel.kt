@@ -23,8 +23,9 @@ class ImportViewModel @Inject constructor(
         initialValue = ImportStatus(),
     )
 
-    fun onDocumentsPicked(uris: List<Uri>) {
-        viewModelScope.launch { importRepository.importDocuments(uris) }
+    /** @param shelfId the shelf the files were picked for, or null to shelve them by format. */
+    fun onDocumentsPicked(uris: List<Uri>, shelfId: Long?) {
+        viewModelScope.launch { importRepository.importDocuments(uris, shelfId) }
     }
 
     fun onFolderPicked(tree: Uri) {

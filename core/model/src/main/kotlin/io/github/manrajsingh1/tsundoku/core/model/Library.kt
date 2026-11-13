@@ -58,6 +58,12 @@ enum class DefaultShelf {
     DOCUMENTS,
     ;
 
+    /**
+     * Where this shelf goes when it is first created. Below zero, so the three always stand
+     * in this order above any shelf the user adds, whichever format was imported first.
+     */
+    val position: Int get() = ordinal - entries.size
+
     companion object {
         fun forFormat(format: BookFormat): DefaultShelf = when (format) {
             BookFormat.CBZ -> MANGA

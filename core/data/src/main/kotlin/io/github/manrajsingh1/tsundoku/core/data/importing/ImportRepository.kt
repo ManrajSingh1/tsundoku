@@ -23,7 +23,10 @@ import kotlinx.coroutines.flow.map
 /** Adds picked files and folders to the library, in the background. */
 interface ImportRepository {
 
-    suspend fun importDocuments(uris: List<Uri>)
+    /**
+     * @param shelfId the shelf to put the books on, or null to shelve each by its format.
+     */
+    suspend fun importDocuments(uris: List<Uri>, shelfId: Long? = null)
 
     /** Imports every book in a picked folder and the folders inside it. */
     suspend fun importFolder(tree: Uri)
@@ -40,22 +43,26 @@ class OfflineImportRepository @Inject constructor(
     private val scheduler: ImportScheduler,
 ) : ImportRepository {
 
-    override suspend fun importDocuments(uris: List<Uri>) {
+    override suspend fun importDocuments(uris: List<Uri>, shelfId: Long?) {
         if (uris.isEmpty()) return
         uris.forEach(documents::persistReadPermission)
-        enqueue(uris, isTree = false)
+        enqueue(uris, isTree = false, shelfId = shelfId)
     }
 
     override suspend fun importFolder(tree: Uri) {
         documents.persistReadPermission(tree)
-        enqueue(listOf(tree), isTree = true)
+        enqueue(listOf(tree), isTree = true, shelfId = null)
     }
 
-    private suspend fun enqueue(uris: List<Uri>, isTree: Boolean) {
+    private suspend fun enqueue(uris: List<Uri>, isTree: Boolean, shelfId: Long?) {
         // A new batch starts a new tally, unless it joins an import that is still running.
         if (queue.nextPending() == null) queue.clearFinished()
         val now = System.currentTimeMillis()
-        queue.insertAll(uris.map { ImportItemEntity(uri = it.toString(), isTree = isTree, createdAt = now) })
+        queue.insertAll(
+            uris.map {
+                ImportItemEntity(uri = it.toString(), isTree = isTree, createdAt = now, targetShelfId = shelfId)
+            },
+        )
         scheduler.schedule()
     }
 

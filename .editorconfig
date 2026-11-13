@@ -1,0 +1,25 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{kt,kts}]
+indent_size = 4
+max_line_length = 120
+ktlint_code_style = android_studio
+ij_kotlin_allow_trailing_comma = true
+ij_kotlin_allow_trailing_comma_on_call_site = true
+# Composable functions are named like the things they draw.
+ktlint_function_naming_ignore_when_annotated_with = Composable
+# The project wraps a signature one parameter to a line as soon as it has more than a few,
+# and keeps short when-branches together; these three rules want the opposite.
+ktlint_standard_class-signature = disabled
+ktlint_standard_function-signature = disabled
+ktlint_standard_blank-line-between-when-conditions = disabled
+
+# Test fixtures hold whole XML documents on one line.
+[**/Fixtures.kt]
+ktlint_standard_max-line-length = disabled

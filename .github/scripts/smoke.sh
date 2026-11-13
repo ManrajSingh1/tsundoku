@@ -10,7 +10,13 @@ APP=io.github.manrajsingh1.tsundoku
 STAGING=$APP.staging
 SHOTS=shots
 LOGS=smoke-logs
+LOGCAT_PID=
 mkdir -p "$SHOTS" "$LOGS"
+
+# No adb command may wait for ever. If the emulator dies, adb's own behaviour is to wait for
+# it to come back, which once held a job until its 45-minute limit.
+ADB="$(command -v adb)"
+adb() { timeout 180 "$ADB" "$@"; }
 
 shot() { adb exec-out screencap -p > "$SHOTS/$1.png"; }
 
@@ -33,10 +39,14 @@ dump() {
 
 tap_in_dump() {
   python3 - "$1" "$LOGS/ui.xml" <<'PY'
-import re, subprocess, sys
+import html, re, subprocess, sys
 text, path = sys.argv[1], sys.argv[2]
 xml = open(path, encoding="utf-8").read()
-m = re.search(r'text="%s"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"' % re.escape(text), xml)
+# Matches what is written on an element or, for one with no writing such as a book's spine,
+# the start of what a screen reader says for it.
+wanted = re.escape(html.escape(text, quote=False))
+m = re.search(r'text="%s"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"' % wanted, xml) or \
+    re.search(r'content-desc="%s[^"]*"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"' % wanted, xml)
 if not m:
     sys.exit(f"No element with text {text!r} on screen")
 x1, y1, x2, y2 = map(int, m.groups())
@@ -44,7 +54,15 @@ subprocess.run(["adb", "shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y
 PY
 }
 
-# Prints every piece of text on screen, so the job log shows what the app displayed.
+# Taps an element found by tap_in_dump's rules in a fresh reading of the screen.
+tap() {
+  dump
+  tap_in_dump "$1"
+  sleep "${2:-3}"
+}
+
+# Prints every piece of text on screen, and what a screen reader would say for the things
+# that have no text, so the job log shows what the app displayed.
 describe() {
   dump
   echo "--- on screen: $1"
@@ -53,17 +71,21 @@ import html, re, sys
 xml = open(sys.argv[1], encoding="utf-8").read()
 for node in re.findall(r"<node[^>]*>", xml):
     text = re.search(r'text="([^"]*)"', node).group(1)
+    spoken = re.search(r'content-desc="([^"]*)"', node).group(1)
     if text:
         print("   ", html.unescape(text))
+    elif spoken:
+        print("    [%s]" % html.unescape(spoken))
 PY
 }
 
-# Fails unless every argument appears somewhere in the text on screen.
+# Fails unless every argument appears somewhere in the text on screen or in what a screen
+# reader would say for it.
 expect() {
   python3 - "$LOGS/ui.xml" "$@" <<'PY'
 import html, re, sys
 xml = open(sys.argv[1], encoding="utf-8").read()
-shown = " | ".join(html.unescape(t) for t in re.findall(r'text="([^"]*)"', xml) if t)
+shown = " | ".join(html.unescape(t) for t in re.findall(r'(?:text|content-desc)="([^"]*)"', xml) if t)
 missing = [want for want in sys.argv[2:] if want not in shown]
 if missing:
     sys.exit(f"Not on screen: {missing}")
@@ -75,6 +97,17 @@ PY
 # thing anyone needs, and the full logcat is only in a downloadable artifact.
 finish() {
   status=$?
+  kill "$LOGCAT_PID" 2> /dev/null || true
+  if ! timeout 20 "$ADB" get-state > /dev/null 2>&1; then
+    echo "--- the emulator is no longer reachable. What the host knows:"
+    timeout 20 "$ADB" devices || true
+    pgrep -fa "qemu-system|emulator" | cut -c1-200 || echo "No emulator process is running."
+    free -m || true
+    sudo dmesg 2> /dev/null | grep -iE "out of memory|killed process|oom-kill|segfault" | tail -10 || true
+    echo "--- the last of the device log before it went:"
+    tail -120 "$LOGS/logcat-live.txt" || true
+    exit "$status"
+  fi
   adb logcat -d > "$LOGS/logcat.txt" || true
   if [ "$status" -ne 0 ]; then
     echo "--- the smoke test failed; crashes and hangs in the device log:"
@@ -86,6 +119,8 @@ finish() {
   fi
   adb shell settings put system font_scale 1.0 || true
   adb shell cmd uimode night no || true
+  adb shell wm size reset || true
+  adb shell wm density reset || true
 }
 trap finish EXIT
 
@@ -123,6 +158,9 @@ adb shell settings put global hide_error_dialogs 1
 sleep 20
 dump
 adb logcat -c
+# A running copy of the device log, kept on the host, so its last lines survive the emulator.
+"$ADB" logcat -v time > "$LOGS/logcat-live.txt" 2> /dev/null &
+LOGCAT_PID=$!
 
 # 1. A first launch with nothing in the library.
 launch "$STAGING/$APP.MainActivity"
@@ -146,35 +184,144 @@ shot 02-after-import
 describe "after the import finished"
 fail_on_crash
 expect "Added 4 books" "1 was already in your library"
-expect "Manga" "Novels" "Documents"
-expect "The Third Volume" "Quiet Shelf v07" "A Test Novel" "Quarterly report"
-expect "Test Manga, vol. 3" "A. Author" "Nora Novelist" "Right to left" "40 pages"
+tap "Dismiss"
 
-# 3. The same screen in dark theme and at the largest text size.
+# 3. The shelves: every book is a spine that says what it is, on the shelf for its format.
+describe "the shelves"
+shot 03-shelves
+expect "Manga" "2 books" "Novels" "1 book" "Add books"
+expect "The Third Volume, volume 3, CBZ" "Quiet Shelf" "A Test Novel, EPUB"
+adb shell input swipe 500 1700 500 700 400
+sleep 3
+describe "the shelves, scrolled"
+expect "Documents" "Quarterly report, PDF"
+adb shell input swipe 500 700 500 1900 400
+sleep 3
+
+# 4. Tapping a spine opens its shelf at that book; the arrows step along it; back returns.
+tap "The Third Volume"
+describe "an open book"
+shot 04-open-book
+expect "The Third Volume" "A. Author · vol. 3 · CBZ" "Book 2 of 2"
+tap "Previous book"
+describe "the book before it"
+expect "Book 1 of 2"
+adb shell input keyevent KEYCODE_BACK
+sleep 3
+describe "back in the library"
+expect "Manga" "Add books"
+fail_on_crash
+
+# 5. Edit mode, through the real database: move a book along its shelf, send it to the next
+#    shelf, start to remove it and think better of it, then delete a shelf and keep its books.
+tap "More options"
+tap "Edit shelves"
+describe "edit mode"
+expect "Tap a book to move or remove it" "Done" "Add files to Manga"
+tap "Quiet Shelf"
+describe "a selected book"
+shot 05-edit-selected
+expect "1 of 2 · Manga"
+tap "Move right"
+describe "moved right"
+expect "2 of 2 · Manga"
+tap "Next shelf"
+describe "moved to the next shelf"
+shot 06-edit-moved-shelf
+expect "2 of 2 · Novels"
+tap "Remove"
+describe "asked about removing"
+expect "Remove from library?" "The file itself is not deleted."
+tap "Cancel"
+tap "Delete shelf Novels"
+describe "asked about deleting a shelf"
+shot 07-delete-shelf
+expect "Delete Novels?" "Its 2 books move to Manga. No files are deleted."
+tap "Delete"
+tap "Done"
+describe "after editing"
+shot 08-after-editing
+# Nothing was lost: the novel and the moved comic now stand on the first shelf.
+expect "Manga" "3 books" "A Test Novel, EPUB" "The Third Volume, volume 3, CBZ" "Add books"
+fail_on_crash
+
+# 6. The same screen in dark theme and at the largest text size.
 adb shell cmd uimode night yes
 sleep 4
-shot 03-dark-theme
+shot 09-dark-theme
 adb shell cmd uimode night no
 adb shell settings put system font_scale 2.0
 sleep 4
-shot 04-largest-text
+shot 10-largest-text
 describe "at 200% text size"
-# Fewer books fit on screen at this size; the ones that do must be shown in full.
-expect "Quarterly report" "The Third Volume" "Test Manga, vol. 3 · A. Author" "CBZ · 6 pages · Right to left"
+expect "Manga" "3 books" "Quiet Shelf"
+tap "More options"
+tap "Edit shelves"
+tap "The Third Volume"
+describe "edit mode at 200% text size"
+shot 11-largest-text-editing
+expect "1 of 3 · Manga" "Move left" "Move right" "Next shelf" "Remove" "Done"
+tap "Done"
 adb shell settings put system font_scale 1.0
 sleep 2
 
-# 4. The library survives the app being killed and started again.
+# 7. Other window sizes. A tablet on its side shows the library beside the open shelf; an
+#    unfolded foldable's inner screen, with no hinge reported by the emulator, shows one pane.
+adb shell wm size 2560x1600
+adb shell wm density 320
+sleep 6
+launch "$STAGING/$APP.MainActivity"
+describe "tablet, landscape: nothing open"
+expect "Manga" "Pick a book"
+tap "The Third Volume"
+describe "tablet, landscape: a book open beside the library"
+shot 12-tablet-two-panes
+expect "Manga" "3 books" "Book 1 of 3" "Add books"
+tap "More options"
+tap "Edit shelves"
+tap "Quiet Shelf"
+describe "tablet, landscape: editing beside the open book"
+shot 13-tablet-editing
+expect "3 of 3 · Manga" "Book 1 of 3"
+tap "Done"
+fail_on_crash
+
+adb shell wm size 1812x2176
+adb shell wm density 420
+sleep 6
+launch "$STAGING/$APP.MainActivity"
+describe "foldable inner screen"
+shot 14-foldable-inner-screen
+fail_on_crash
+adb shell input keyevent KEYCODE_BACK
+sleep 3
+dump
+expect "Manga" "Add books"
+
+adb shell wm size reset
+adb shell wm density reset
+sleep 6
+
+# 8. The library survives the app being killed and started again, edits included.
 adb shell am force-stop "$STAGING"
 launch "$STAGING/$APP.MainActivity"
 describe "after a restart"
-expect "The Third Volume" "A Test Novel" "Quarterly report"
+expect "Manga" "3 books" "A Test Novel, EPUB" "The Third Volume, volume 3, CBZ"
 fail_on_crash
 
-# 5. The APK that is actually published starts too.
+# 9. An upgrade: the previously published build creates its database, then the build that
+#    is about to be published is installed over it and has to open that database.
+if [ -f apk-previous/tsundoku-preview.apk ]; then
+  adb install -r apk-previous/tsundoku-preview.apk
+  launch "$APP/$APP.MainActivity"
+  adb shell am force-stop "$APP"
+  echo "Installed and ran the previous preview; upgrading it."
+else
+  echo "No previous preview to upgrade from; installing fresh."
+fi
 adb install -r apk/app-release.apk
 launch "$APP/$APP.MainActivity"
-shot 05-release-build
+shot 15-release-build
 describe "the release build"
 expect "TSUNDOKU" "Your shelves are empty"
 fail_on_crash

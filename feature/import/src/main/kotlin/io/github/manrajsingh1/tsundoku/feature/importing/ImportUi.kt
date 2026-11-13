@@ -15,7 +15,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -26,9 +30,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.manrajsingh1.tsundoku.core.model.ImportStatus
 
-/** The two ways into the library, each opening the system's own picker. */
+/** The ways into the library, each opening the system's own picker. */
 class ImportPickers(
+    /** Picked files are shelved by their format. */
     val addFiles: () -> Unit,
+    /** Picked files go on the given shelf, whatever their format. */
+    val addFilesToShelf: (shelfId: Long) -> Unit,
     val addFolder: () -> Unit,
 )
 
@@ -38,18 +45,29 @@ class ImportPickers(
  */
 @Composable
 fun rememberImportPickers(
-    onDocumentsPicked: (List<Uri>) -> Unit,
+    onDocumentsPicked: (uris: List<Uri>, shelfId: Long?) -> Unit,
     onFolderPicked: (Uri) -> Unit,
 ): ImportPickers {
+    // The shelf the picker was opened for. Saved, because the app can be stopped and
+    // restarted while the system picker is in front of it.
+    var targetShelfId by rememberSaveable { mutableStateOf<Long?>(null) }
     val files = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
-        if (uris.isNotEmpty()) onDocumentsPicked(uris)
+        if (uris.isNotEmpty()) onDocumentsPicked(uris, targetShelfId)
+        targetShelfId = null
     }
     val folder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { tree ->
         if (tree != null) onFolderPicked(tree)
     }
     return remember(files, folder) {
         ImportPickers(
-            addFiles = { files.launch(BOOK_MIME_TYPES) },
+            addFiles = {
+                targetShelfId = null
+                files.launch(BOOK_MIME_TYPES)
+            },
+            addFilesToShelf = { shelfId ->
+                targetShelfId = shelfId
+                files.launch(BOOK_MIME_TYPES)
+            },
             addFolder = { folder.launch(null) },
         )
     }

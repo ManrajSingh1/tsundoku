@@ -56,6 +56,7 @@ dependencies {
     implementation(project(":feature:import"))
 
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.window)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.android)
 }
