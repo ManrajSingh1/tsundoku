@@ -31,9 +31,11 @@ jobs:
       - name: Build the spike in release mode with the test key
         run: ./gradlew :spike:assembleRelease --stacktrace
 
-      # The full tree is in the log so every transitive library, and so its licence, can be read.
-      - name: Print the release dependency tree
-        run: ./gradlew :spike:dependencies --configuration releaseRuntimeClasspath --console=plain | grep -v "^$" | head -400
+      # Every library the release build pulls in, so each one's licence can be checked.
+      - name: List the release dependencies
+        run: |
+          ./gradlew :spike:dependencies --configuration releaseRuntimeClasspath --console=plain > deps.txt
+          grep -oE '[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+:[^ ]+( -> [^ ]+)?' deps.txt | sort -u
 
       - name: Report APK size
         run: ls -l spike/build/outputs/apk/release/
@@ -45,6 +47,11 @@ jobs:
         run: |
           ZIPALIGN="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/zipalign"
           "$ZIPALIGN" -c -P 16 -v 4 spike/build/outputs/apk/release/spike-release.apk | tail -3
+
+      # zipalign checks where the libraries sit in the APK; this checks how they were linked.
+      # Report only for the spike, which carries PDFium on purpose. The real app will enforce it.
+      - name: Check native libraries are linked for 16 KB pages
+        run: python3 .github/scripts/check_elf_alignment.py spike/build/outputs/apk/release/spike-release.apk
 
       - uses: actions/upload-artifact@v4
         with:
