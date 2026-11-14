@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bottom to top: the comic pager (or the loading and failure messages), the EPUB or PDF
+     navigator, then the two bars. The bars are separate views that take only the space
+     they draw in, so touches anywhere else reach the page underneath. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/feature_reader_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/feature_reader_navigator"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/feature_reader_top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top" />
+
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/feature_reader_bottom_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom" />
+
+</FrameLayout>

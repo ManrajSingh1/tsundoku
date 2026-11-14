@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -37,7 +38,19 @@ class SettingsRepository @Inject constructor(
         context.settingsStore.edit { it[COMIC_DIRECTION] = direction.name }
     }
 
-    private companion object {
-        val COMIC_DIRECTION = stringPreferencesKey("comic_reading_direction")
+    /** The text size in EPUBs, where 1.0 is the size the book asks for. */
+    val epubFontSize: Flow<Double> = context.settingsStore.data.map { preferences ->
+        (preferences[EPUB_FONT_SIZE] ?: 1.0).coerceIn(MIN_FONT_SIZE, MAX_FONT_SIZE)
+    }
+
+    suspend fun setEpubFontSize(size: Double) {
+        context.settingsStore.edit { it[EPUB_FONT_SIZE] = size.coerceIn(MIN_FONT_SIZE, MAX_FONT_SIZE) }
+    }
+
+    companion object {
+        const val MIN_FONT_SIZE = 0.6
+        const val MAX_FONT_SIZE = 3.0
+        private val EPUB_FONT_SIZE = doublePreferencesKey("epub_font_size")
+        private val COMIC_DIRECTION = stringPreferencesKey("comic_reading_direction")
     }
 }

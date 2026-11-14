@@ -24,6 +24,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
  * lost when it does.
  *
  * @param hasVerticalFold true when the window is split left and right by a hinge.
+ * @param progress how far through each started book the reader is, from 0 to 1.
+ * @param onReadBook opens a book in its reader, from the start if `restart` is true.
  * @param importStatus drawn above the shelves. A slot, so this feature does not depend on
  * the import feature.
  */
@@ -35,6 +37,8 @@ fun LibraryRoute(
     onAddFolder: () -> Unit,
     onAddFilesToShelf: (shelfId: Long) -> Unit,
     modifier: Modifier = Modifier,
+    progress: Map<Long, Double> = emptyMap(),
+    onReadBook: (bookId: Long, restart: Boolean) -> Unit = { _, _ -> },
     importStatus: @Composable () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -99,6 +103,8 @@ fun LibraryRoute(
                         place = open,
                         onShowBook = { openBookId = it },
                         onBack = if (panes.twoPane) null else ({ openBookId = null }),
+                        progress = progress,
+                        onReadBook = { book, restart -> onReadBook(book.id, restart) },
                     )
                 }
             }

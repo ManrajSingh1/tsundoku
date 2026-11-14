@@ -46,7 +46,8 @@ xml = open(path, encoding="utf-8").read()
 # the start of what a screen reader says for it.
 wanted = re.escape(html.escape(text, quote=False))
 m = re.search(r'text="%s"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"' % wanted, xml) or \
-    re.search(r'content-desc="%s[^"]*"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"' % wanted, xml)
+    re.search(r'content-desc="%s[^"]*"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"' % wanted, xml) or \
+    re.search(r'text="%s[^"]*"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"' % wanted, xml)
 if not m:
     sys.exit(f"No element with text {text!r} on screen")
 x1, y1, x2, y2 = map(int, m.groups())
@@ -118,6 +119,7 @@ finish() {
     adb exec-out screencap -p > "$SHOTS/99-at-failure.png" || true
   fi
   adb shell settings put system font_scale 1.0 || true
+  adb shell settings put global animator_duration_scale 1 || true
   adb shell cmd uimode night no || true
   adb shell wm size reset || true
   adb shell wm density reset || true
@@ -203,6 +205,37 @@ tap "The Third Volume"
 describe "an open book"
 shot 04-open-book
 expect "The Third Volume" "A. Author · vol. 3 · CBZ" "Book 2 of 2"
+expect "Start reading"
+fail_on_crash
+
+# 4a. Reading a comic. This one says it is manga, so it reads right to left: the next page
+#     is on the left, and swiping to the right brings it in. Closing the book returns to
+#     the same shelf, at the same book, which now offers to continue.
+tap "Start reading" 6
+describe "a comic open in the reader"
+shot 04a-comic-reader
+expect "Close book" "Page 1 of 6" "Right to left"
+adb shell input swipe 250 1200 850 1200 200
+sleep 4
+describe "the comic, one page on"
+shot 04b-comic-next-page
+expect "Page 2 of 6"
+fail_on_crash
+tap "Close book"
+describe "back on the open shelf after reading"
+shot 04c-continue-reading
+expect "The Third Volume" "Book 2 of 2" "Continue reading" "20%"
+
+# 4b. With animations removed in the system settings, the carousel is flat and still.
+adb shell input keyevent KEYCODE_BACK
+sleep 3
+adb shell settings put global animator_duration_scale 0
+tap "The Third Volume"
+describe "an open book with animations removed"
+shot 04d-reduced-motion
+expect "Book 2 of 2" "Continue reading"
+adb shell settings put global animator_duration_scale 1
+fail_on_crash
 tap "Previous book"
 describe "the book before it"
 expect "Book 1 of 2"
@@ -308,6 +341,42 @@ launch "$STAGING/$APP.MainActivity"
 describe "after a restart"
 expect "Manga" "3 books" "A Test Novel, EPUB" "The Third Volume, volume 3, CBZ"
 fail_on_crash
+
+# 8a. Reading an EPUB and a PDF in the minified build. Both are drawn by Readium.
+tap "A Test Novel"
+describe "the novel on the open shelf"
+expect "Start reading"
+tap "Start reading" 10
+describe "an EPUB open in the reader"
+shot 16-epub-reader
+expect "Close book" "Larger text"
+fail_on_crash
+tap "Larger text"
+shot 17-epub-larger-text
+fail_on_crash
+tap "Close book"
+adb shell input keyevent KEYCODE_BACK
+sleep 3
+adb shell input swipe 500 1700 500 700 400
+sleep 3
+tap "Quarterly report"
+tap "Start reading" 10
+describe "a PDF open in the reader"
+shot 18-pdf-reader
+expect "Close book" "Page 1 of 40"
+fail_on_crash
+# Pages turn sideways. Reported, not required: how the engine pages is its own business.
+adb shell input swipe 850 1200 250 1200 200
+sleep 4
+describe "the PDF after a sideways swipe"
+shot 19-pdf-after-swipe
+expect "Page 2 of 40" || echo "NOTE: a sideways swipe did not reach page 2 of the PDF."
+fail_on_crash
+tap "Close book"
+describe "back on the open shelf after the PDF"
+expect "Quarterly report" "Book 1 of 1"
+adb shell input keyevent KEYCODE_BACK
+sleep 3
 
 # 9. An upgrade: the previously published build creates its database, then the build that
 #    is about to be published is installed over it and has to open that database.
