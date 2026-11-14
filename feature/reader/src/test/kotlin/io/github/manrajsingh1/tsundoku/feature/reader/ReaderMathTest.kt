@@ -24,24 +24,27 @@ class ReaderMathTest {
         assertEquals(TapZone.CONTROLS, ReaderMath.tapZone(10f, 0, rightToLeft = true))
     }
 
+    private fun fraction(paged: Boolean, position: Int?, count: Int, progression: Double?) =
+        ReaderMath.locatorFraction(paged, position, count, progression)
+
     @Test
     fun aPdfIsFinishedOnItsLastPage() {
-        assertEquals(0.0, ReaderMath.locatorFraction(paged = true, position = 1, positionCount = 40, totalProgression = 0.0), 0.0)
-        assertEquals(1.0, ReaderMath.locatorFraction(paged = true, position = 40, positionCount = 40, totalProgression = 0.975), 0.0)
-        assertEquals(0.5, ReaderMath.locatorFraction(paged = true, position = 21, positionCount = 41, totalProgression = null), 1e-9)
+        assertEquals(0.0, fraction(true, 1, 40, 0.0), 0.0)
+        assertEquals(1.0, fraction(true, 40, 40, 0.975), 0.0)
+        assertEquals(0.5, fraction(true, 21, 41, null), 1e-9)
     }
 
     @Test
     fun anEpubFollowsReadiumUntilItsLastPositionWhichIsTheEnd() {
-        assertEquals(0.4, ReaderMath.locatorFraction(paged = false, position = 12, positionCount = 30, totalProgression = 0.4), 0.0)
-        assertEquals(1.0, ReaderMath.locatorFraction(paged = false, position = 30, positionCount = 30, totalProgression = 0.97), 0.0)
+        assertEquals(0.4, fraction(false, 12, 30, 0.4), 0.0)
+        assertEquals(1.0, fraction(false, 30, 30, 0.97), 0.0)
         // A book of one position cannot be told apart this way; Readium's estimate stands.
-        assertEquals(0.6, ReaderMath.locatorFraction(paged = false, position = 1, positionCount = 1, totalProgression = 0.6), 0.0)
+        assertEquals(0.6, fraction(false, 1, 1, 0.6), 0.0)
     }
 
     @Test
     fun aLocatorWithNothingUsableCountsAsNotStarted() {
-        assertEquals(0.0, ReaderMath.locatorFraction(paged = true, position = null, positionCount = 0, totalProgression = null), 0.0)
+        assertEquals(0.0, fraction(true, null, 0, null), 0.0)
     }
 
     @Test
