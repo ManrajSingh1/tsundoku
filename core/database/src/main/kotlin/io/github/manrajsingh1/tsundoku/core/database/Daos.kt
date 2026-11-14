@@ -5,7 +5,9 @@ import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
 import androidx.room3.Query
 import androidx.room3.Transaction
+import io.github.manrajsingh1.tsundoku.core.model.BookFormat
 import io.github.manrajsingh1.tsundoku.core.model.ImportState
+import io.github.manrajsingh1.tsundoku.core.model.ReadingDirection
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -37,6 +39,16 @@ abstract class BookDao {
 
     @Query("DELETE FROM books WHERE id = :id")
     abstract suspend fun delete(id: Long)
+
+    @Query("UPDATE books SET lastOpenedAt = :time WHERE id = :id")
+    abstract suspend fun setLastOpened(id: Long, time: Long)
+
+    @Query("UPDATE books SET readingDirection = :direction WHERE id = :id")
+    abstract suspend fun setReadingDirection(id: Long, direction: ReadingDirection)
+
+    /** Every volume of a series reads the same way, so one choice covers them all. */
+    @Query("UPDATE books SET readingDirection = :direction WHERE series = :series AND format = :format")
+    abstract suspend fun setSeriesReadingDirection(series: String, format: BookFormat, direction: ReadingDirection)
 }
 
 @Dao
@@ -189,6 +201,9 @@ abstract class ReadingProgressDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun save(progress: ReadingProgressEntity)
+
+    @Query("SELECT * FROM reading_progress")
+    abstract fun observeAll(): Flow<List<ReadingProgressEntity>>
 }
 
 @Dao

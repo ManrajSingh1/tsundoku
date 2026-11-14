@@ -51,13 +51,21 @@ class OpenShelfPaneTest {
         listOf(book(1, "The Third Volume", author = "A. Author", volume = 3.0), book(2, "Quiet Shelf")),
     )
 
-    private fun show(place: BookPlace?, withBack: Boolean = true) {
+    private fun show(
+        place: BookPlace?,
+        withBack: Boolean = true,
+        progress: Map<Long, Double> = emptyMap(),
+        reducedMotion: Boolean = false,
+    ) {
         compose.setContent {
             TsundokuTheme {
                 OpenShelfPane(
                     place = place,
                     onShowBook = { calls += "show $it" },
                     onBack = if (withBack) ({ calls += "back" }) else null,
+                    progress = progress,
+                    onReadBook = { book, restart -> calls += "read ${book.id} $restart" },
+                    reducedMotion = reducedMotion,
                 )
             }
         }
@@ -97,5 +105,45 @@ class OpenShelfPaneTest {
 
         compose.onNodeWithContentDescription("Back to library").assertDoesNotExist()
         compose.onNodeWithText("Pick a book").assertIsDisplayed()
+    }
+
+    @Test
+    fun anUnopenedBookOffersToStartAndShowsNoProgress() {
+        show(BookPlace(shelf, 0))
+
+        compose.onNodeWithText("0%").assertDoesNotExist()
+        compose.onNodeWithText("Start reading").assertIsDisplayed().performClick()
+
+        assertEquals(listOf("read 1 false"), calls)
+    }
+
+    @Test
+    fun aStartedBookOffersToContinueAndSaysHowFarItIs() {
+        show(BookPlace(shelf, 0), progress = mapOf(1L to 0.4))
+
+        compose.onNodeWithText("40%").assertIsDisplayed()
+        compose.onNodeWithText("Continue reading").assertIsDisplayed().performClick()
+
+        assertEquals(listOf("read 1 false"), calls)
+    }
+
+    @Test
+    fun aFinishedBookOffersToBeReadAgainFromTheStart() {
+        show(BookPlace(shelf, 0), progress = mapOf(1L to 1.0))
+
+        compose.onNodeWithText("100%").assertIsDisplayed()
+        compose.onNodeWithText("Read again").assertIsDisplayed().performClick()
+
+        assertEquals(listOf("read 1 true"), calls)
+    }
+
+    @Test
+    fun withAnimationsRemovedTheShelfStillOpensAndBrowses() {
+        show(BookPlace(shelf, 0), reducedMotion = true)
+
+        compose.onNodeWithText("Book 1 of 2", substring = true).assertIsDisplayed()
+        compose.onNodeWithContentDescription("Next book").performClick()
+
+        assertEquals(listOf("show 2"), calls)
     }
 }

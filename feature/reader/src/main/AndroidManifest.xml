@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- Not exported: only the library opens books. Turning the device or resizing the
+             window re-lays the page out in place, without opening the book again. -->
+        <activity
+            android:name=".ReaderActivity"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation"
+            android:exported="false"
+            android:theme="@style/Theme.TsundokuReader" />
+    </application>
+
+</manifest>

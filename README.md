@@ -3,10 +3,11 @@
 A local-first Android reader for manga, comics, EPUBs and PDFs that shows your library as
 bookshelves of spines and opens each shelf as a rotating cover carousel.
 
-**Status: Phase 2 (library and editing).** The app imports CBZ, EPUB and PDF files and
-shows them as shelves of spines that can be rearranged. The carousel and the readers come
-in later phases. The decisions behind the code are in [`docs/decisions/`](docs/decisions/),
-and what each phase delivered is in [`docs/gates/`](docs/gates/).
+**Status: Phase 4 (readers and progress).** The app imports CBZ, EPUB and PDF files, shows
+them as shelves of spines that can be rearranged, opens each shelf as a 3D carousel of
+covers, and reads all three formats, remembering where you were. Hardening and release
+come next. The decisions behind the code are in [`docs/decisions/`](docs/decisions/), and
+what each phase delivered is in [`docs/gates/`](docs/gates/).
 
 ## Getting a build
 
@@ -26,7 +27,10 @@ last. That key protects nothing and must never sign a Play release.
   under **More**, imports every CBZ, EPUB and PDF in a folder and the folders inside it.
   Use a folder for a library of any size: Android lets an app remember a limited number of
   individually picked files, and a folder counts as one.
-- Tap a spine to open its shelf at that book.
+- Tap a spine to open its shelf as a carousel at that book. Drag it, tap a side book, or
+  use the arrows.
+- **Start reading** opens the book. Comics read right to left unless you change it in the
+  reader; tap the middle of a page for the bars. Closing a book returns to the same shelf.
 - **More**, **Edit shelves**: tap a spine to select it, then move it, send it to the next
   shelf or remove it from the bar at the bottom. Rename, delete and add shelves, and add
   files straight to a shelf from the dashed slot at its end.

@@ -17,10 +17,12 @@ import io.github.manrajsingh1.tsundoku.feature.importing.ImportViewModel
 import io.github.manrajsingh1.tsundoku.feature.importing.rememberImportPickers
 import io.github.manrajsingh1.tsundoku.feature.library.LibraryRoute
 import io.github.manrajsingh1.tsundoku.feature.library.LibraryViewModel
+import io.github.manrajsingh1.tsundoku.feature.library.ReadingProgressViewModel
+import io.github.manrajsingh1.tsundoku.feature.reader.ReaderActivity
 import kotlinx.coroutines.flow.map
 
 /**
- * The app's one activity. It only wires features together: the library draws the shelves,
+ * The app's home. It only wires features together: the library draws the shelves,
  * the import feature supplies the pickers and the progress, and neither knows of the other.
  */
 @AndroidEntryPoint
@@ -28,6 +30,7 @@ class MainActivity : ComponentActivity() {
 
     private val libraryViewModel: LibraryViewModel by viewModels()
     private val importViewModel: ImportViewModel by viewModels()
+    private val progressViewModel: ReadingProgressViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -44,6 +47,7 @@ class MainActivity : ComponentActivity() {
                 }.collectAsStateWithLifecycle(initialValue = false)
 
                 val importStatus by importViewModel.status.collectAsStateWithLifecycle()
+                val progress by progressViewModel.progress.collectAsStateWithLifecycle()
                 val pickers = rememberImportPickers(
                     onDocumentsPicked = importViewModel::onDocumentsPicked,
                     onFolderPicked = importViewModel::onFolderPicked,
@@ -54,6 +58,10 @@ class MainActivity : ComponentActivity() {
                     onAddFiles = pickers.addFiles,
                     onAddFolder = pickers.addFolder,
                     onAddFilesToShelf = pickers.addFilesToShelf,
+                    progress = progress,
+                    // The library stays as it is underneath, so closing the book returns to
+                    // the same shelf with the same book facing front.
+                    onReadBook = { bookId, restart -> startActivity(ReaderActivity.intent(this, bookId, restart)) },
                     importStatus = {
                         ImportStatusBar(status = importStatus, onDismiss = importViewModel::onDismissResult)
                     },

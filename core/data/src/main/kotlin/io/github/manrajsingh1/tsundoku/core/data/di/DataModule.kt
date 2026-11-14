@@ -9,6 +9,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.github.manrajsingh1.tsundoku.core.data.LibraryRepository
 import io.github.manrajsingh1.tsundoku.core.data.OfflineLibraryRepository
+import io.github.manrajsingh1.tsundoku.core.data.OfflineReadingRepository
+import io.github.manrajsingh1.tsundoku.core.data.ReadingRepository
 import io.github.manrajsingh1.tsundoku.core.data.importing.ImportRepository
 import io.github.manrajsingh1.tsundoku.core.data.importing.ImportScheduler
 import io.github.manrajsingh1.tsundoku.core.data.importing.OfflineImportRepository
@@ -57,6 +59,10 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindImportScheduler(implementation: WorkManagerImportScheduler): ImportScheduler
+
+    @Binds
+    @Singleton
+    abstract fun bindReadingRepository(implementation: OfflineReadingRepository): ReadingRepository
 
     @Binds
     @Singleton

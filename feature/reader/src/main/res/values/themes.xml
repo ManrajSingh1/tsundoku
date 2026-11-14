@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Readium's navigators are fragments that need an AppCompat and Material theme under
+         them. Everything the app itself draws here is themed in core/ui. -->
+    <style name="Theme.TsundokuReader" parent="Theme.Material3.DayNight.NoActionBar" />
+</resources>
