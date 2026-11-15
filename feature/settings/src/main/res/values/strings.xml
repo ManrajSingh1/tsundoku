@@ -4,12 +4,21 @@
     <string name="feature_settings_back">Back to library</string>
 
     <string name="feature_settings_appearance">Appearance</string>
-    <string name="feature_settings_theme">Theme</string>
+    <string name="feature_settings_theme">Light or dark</string>
     <string name="feature_settings_theme_system">Same as the phone</string>
     <string name="feature_settings_theme_light">Light</string>
     <string name="feature_settings_theme_dark">Dark</string>
-    <string name="feature_settings_dynamic_color">Wallpaper colours</string>
-    <string name="feature_settings_dynamic_color_body">Take colours from your wallpaper instead of walnut and amber.</string>
+    <string name="feature_settings_colours">Colours</string>
+    <string name="feature_settings_colours_tsundoku">Walnut and amber</string>
+    <string name="feature_settings_colours_wallpaper">Wallpaper colours</string>
+    <string name="feature_settings_colours_catppuccin">Catppuccin</string>
+    <string name="feature_settings_colours_dracula">Dracula</string>
+    <string name="feature_settings_colours_everforest">Everforest</string>
+    <string name="feature_settings_colours_gruvbox">Gruvbox</string>
+    <string name="feature_settings_colours_nord">Nord</string>
+    <string name="feature_settings_colours_rose_pine">Rosé Pine</string>
+    <string name="feature_settings_colours_solarized">Solarized</string>
+    <string name="feature_settings_colours_tokyo_night">Tokyo Night</string>
 
     <string name="feature_settings_library">Library</string>
     <string name="feature_settings_flat_carousel">Flat covers</string>
@@ -23,6 +32,22 @@
     <string name="feature_settings_page_theme_light">White</string>
     <string name="feature_settings_page_theme_sepia">Sepia</string>
     <string name="feature_settings_page_theme_dark">Black</string>
+
+    <string name="feature_settings_backup">Backup</string>
+    <string name="feature_settings_backup_save">Save a backup</string>
+    <string name="feature_settings_backup_save_body">Your shelves, their order, where you are in each book, and these settings, in one small file. The books themselves are not included.</string>
+    <string name="feature_settings_backup_restore">Restore from a backup</string>
+    <string name="feature_settings_backup_restore_body">Puts shelves, reading positions and settings back as a backup had them.</string>
+    <string name="feature_settings_restore_title">Restore from a backup?</string>
+    <string name="feature_settings_restore_body">Your shelves, reading positions and settings will change to match the backup. No book is ever removed. Books the backup knows that aren't in the library yet go back to their places when you add their files.</string>
+    <string name="feature_settings_restore_choose">Choose backup</string>
+    <string name="feature_settings_cancel">Cancel</string>
+    <string name="feature_settings_backup_saved">Backup saved. Shelves: %1$d. Books: %2$d.</string>
+    <string name="feature_settings_backup_not_saved">The backup couldn't be saved there. Try another folder.</string>
+    <string name="feature_settings_restored">Restored. Books back in place: %1$d.</string>
+    <string name="feature_settings_restored_waiting">Restored. Books back in place: %1$d. Waiting for their files: %2$d. Add those files and they return to their shelves.</string>
+    <string name="feature_settings_not_a_backup">That file isn't a Tsundoku backup.</string>
+    <string name="feature_settings_backup_unreadable">That file couldn't be read.</string>
 
     <string name="feature_settings_about">About</string>
     <string name="feature_settings_version">Tsundoku %1$s</string>

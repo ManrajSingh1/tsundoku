@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.manrajsingh1.tsundoku.core.data.R
+import io.github.manrajsingh1.tsundoku.core.data.backup.PendingRestore
 import io.github.manrajsingh1.tsundoku.core.database.BookDao
 import io.github.manrajsingh1.tsundoku.core.database.BookEntity
 import io.github.manrajsingh1.tsundoku.core.database.ShelfDao
@@ -42,6 +43,7 @@ class BookImporter @Inject constructor(
     private val shelfDao: ShelfDao,
     private val inspector: PublicationInspector,
     private val covers: CoverStore,
+    private val pendingRestore: PendingRestore,
 ) {
 
     /**
@@ -114,6 +116,15 @@ class BookImporter @Inject constructor(
             // Two copies of one file in the same batch: the second insert meets the unique index.
             val winner = bookDao.findByHash(digest.sha256) ?: throw e
             return@withContext ImportOutcome(ImportState.DUPLICATE, winner.title, bookId = winner.id)
+        }
+        // If a restored backup has been waiting for this book, it goes back to its own
+        // shelf, place and page. Failing to is not a reason to fail the import.
+        try {
+            pendingRestore.place(bookId, digest.sha256)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // The book stays where the import put it.
         }
         ImportOutcome(ImportState.IMPORTED, title, bookId = bookId)
     }

@@ -10,6 +10,7 @@ import io.github.manrajsingh1.tsundoku.core.data.SettingsRepository
 import io.github.manrajsingh1.tsundoku.core.data.reading.PublicationSource
 import io.github.manrajsingh1.tsundoku.core.model.Book
 import io.github.manrajsingh1.tsundoku.core.model.BookFormat
+import io.github.manrajsingh1.tsundoku.core.model.ColourTheme
 import io.github.manrajsingh1.tsundoku.core.model.PageTheme
 import io.github.manrajsingh1.tsundoku.core.model.ReadingDirection
 import io.github.manrajsingh1.tsundoku.core.model.ReadingProgress
@@ -60,8 +61,8 @@ class ReaderViewModel @Inject constructor(
     // Settings cannot change while a book is open, so one reading of them is enough.
     private val preferences = settings.preferencesNow()
 
-    /** Whether the bars take their colours from the wallpaper, as the rest of the app does. */
-    val dynamicColor: Boolean = preferences.dynamicColor
+    /** The colours the bars wear, the same as the rest of the app. */
+    val colourTheme: ColourTheme = preferences.colourTheme
 
     /** The page colour chosen for EPUBs. */
     val epubPageTheme: PageTheme = preferences.epubPageTheme

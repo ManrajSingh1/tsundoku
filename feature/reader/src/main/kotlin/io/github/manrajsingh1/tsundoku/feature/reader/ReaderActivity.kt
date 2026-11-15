@@ -20,6 +20,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import io.github.manrajsingh1.tsundoku.core.model.BookFormat
 import io.github.manrajsingh1.tsundoku.core.model.PageTheme
 import io.github.manrajsingh1.tsundoku.core.ui.theme.TsundokuTheme
+import io.github.manrajsingh1.tsundoku.core.ui.theme.pageColours
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -32,6 +33,7 @@ import org.readium.r2.navigator.input.InputListener
 import org.readium.r2.navigator.input.TapEvent
 import org.readium.r2.navigator.pdf.PdfNavigatorFactory
 import org.readium.r2.navigator.pdf.PdfNavigatorFragment
+import org.readium.r2.navigator.preferences.Color as ReadiumColor
 import org.readium.r2.navigator.preferences.Theme
 import org.readium.r2.shared.ExperimentalReadiumApi
 import org.readium.r2.shared.publication.Locator
@@ -60,15 +62,15 @@ class ReaderActivity : AppCompatActivity() {
 
         val content = findViewById<ComposeView>(R.id.feature_reader_content)
         content.setContent {
-            TsundokuTheme(dynamicColor = viewModel.dynamicColor) {
+            TsundokuTheme(colourTheme = viewModel.colourTheme) {
                 ReaderContent(viewModel, onClose = ::finish, onPageTapped = ::onPageTapped)
             }
         }
         findViewById<ComposeView>(R.id.feature_reader_top_bar).setContent {
-            TsundokuTheme(dynamicColor = viewModel.dynamicColor) { ReaderTopBar(viewModel, onClose = ::finish) }
+            TsundokuTheme(colourTheme = viewModel.colourTheme) { ReaderTopBar(viewModel, onClose = ::finish) }
         }
         findViewById<ComposeView>(R.id.feature_reader_bottom_bar).setContent {
-            TsundokuTheme(dynamicColor = viewModel.dynamicColor) { ReaderBottomBar(viewModel) }
+            TsundokuTheme(colourTheme = viewModel.colourTheme) { ReaderBottomBar(viewModel) }
         }
 
         lifecycleScope.launch {
@@ -181,17 +183,33 @@ class ReaderActivity : AppCompatActivity() {
         }
     }
 
-    /** EPUB pages take the colour chosen in Settings, at the reader's chosen text size. */
+    /**
+     * EPUB pages take the colour chosen in Settings, at the reader's chosen text size.
+     * "Same as the app" means the app's theme: its own background and text colours if a
+     * named theme is on, otherwise plain white by day and black by night.
+     */
     private fun epubPreferences(fontSize: Double): EpubPreferences {
         val night = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
             Configuration.UI_MODE_NIGHT_YES
-        val theme = when (viewModel.epubPageTheme) {
-            PageTheme.SYSTEM -> if (night) Theme.DARK else Theme.LIGHT
-            PageTheme.LIGHT -> Theme.LIGHT
-            PageTheme.SEPIA -> Theme.SEPIA
-            PageTheme.DARK -> Theme.DARK
+        return when (viewModel.epubPageTheme) {
+            PageTheme.LIGHT -> EpubPreferences(fontSize = fontSize, theme = Theme.LIGHT)
+            PageTheme.SEPIA -> EpubPreferences(fontSize = fontSize, theme = Theme.SEPIA)
+            PageTheme.DARK -> EpubPreferences(fontSize = fontSize, theme = Theme.DARK)
+            PageTheme.SYSTEM -> {
+                val base = if (night) Theme.DARK else Theme.LIGHT
+                val colours = pageColours(viewModel.colourTheme, night)
+                if (colours == null) {
+                    EpubPreferences(fontSize = fontSize, theme = base)
+                } else {
+                    EpubPreferences(
+                        fontSize = fontSize,
+                        theme = base,
+                        backgroundColor = ReadiumColor(colours.first),
+                        textColor = ReadiumColor(colours.second),
+                    )
+                }
+            }
         }
-        return EpubPreferences(fontSize = fontSize, theme = theme)
     }
 
     companion object {

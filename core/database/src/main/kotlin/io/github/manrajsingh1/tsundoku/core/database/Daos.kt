@@ -85,6 +85,9 @@ abstract class ShelfDao {
     @Query("SELECT * FROM shelves WHERE id = :id")
     abstract suspend fun findShelf(id: Long): ShelfEntity?
 
+    @Query("UPDATE shelves SET position = :position WHERE id = :id")
+    abstract suspend fun setShelfPosition(id: Long, position: Int)
+
     @Query("UPDATE shelves SET name = :name WHERE id = :id")
     abstract suspend fun renameShelf(id: Long, name: String)
 
