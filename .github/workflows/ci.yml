@@ -134,6 +134,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The emulator refuses to start without room for its data partition, and a hosted
+      # runner arrives nearly full of toolchains this build never uses.
+      - name: Free disk space for the emulator
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL /usr/share/swift
+          df -h / | tail -1
+
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -168,6 +175,8 @@ jobs:
           target: default
           cores: 4
           ram-size: 4096M
+          # Ample for the app, its tests and five sample books; the default asks for 7 GB.
+          disk-size: 4096M
           profile: pixel_6
           disable-animations: false
           # swangle: OpenGL ES through ANGLE on SwiftShader's Vulkan. The older SwiftShader
