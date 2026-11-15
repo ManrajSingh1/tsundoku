@@ -1,6 +1,7 @@
 package io.github.manrajsingh1.tsundoku.feature.library
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -55,6 +57,7 @@ internal fun spineScale(): Float = LocalDensity.current.fontScale.coerceIn(1f, 1
  *
  * @param selected null outside edit mode, where a spine is not a thing that can be selected.
  * @param label everything a screen reader says for this book.
+ * @param lifted true while a finger sliding along the shelf is on this book.
  */
 @Composable
 internal fun Spine(
@@ -66,10 +69,19 @@ internal fun Spine(
     textMeasurer: TextMeasurer,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    lifted: () -> Boolean = { false },
 ) {
     val scale = spineScale()
     val density = LocalDensity.current
-    val lift by animateDpAsState(if (selected == true) SpineLift else 0.dp, label = "spine lift")
+    // Read through a derived state, so a finger running along the shelf recomposes only the
+    // spine it reaches and the one it leaves.
+    val isLifted by remember(lifted) { derivedStateOf(lifted) }
+    val lift by animateDpAsState(
+        targetValue = if (selected == true || isLifted) SpineLift else 0.dp,
+        // A little bounce: the book hops up under the finger and settles back behind it.
+        animationSpec = spring(dampingRatio = 0.55f, stiffness = 700f),
+        label = "spine lift",
+    )
     val spineColor = Color(book.spineColor)
     val textColor = MaterialTheme.bookcase.spineText
     val outline = MaterialTheme.colorScheme.primary

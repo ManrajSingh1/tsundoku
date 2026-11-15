@@ -30,8 +30,10 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -79,6 +81,10 @@ class LibraryActions(
     val onAddShelf: () -> Unit,
     val onRenameShelf: (shelfId: Long, name: String) -> Unit,
     val onDeleteShelf: (Shelf) -> Unit,
+    /** Puts a shelf's books in A to Z order. */
+    val onSortShelf: (Shelf) -> Unit = {},
+    /** Puts a shelf back in an earlier order of book ids: the undo for a sort. */
+    val onRestoreShelfOrder: (shelfId: Long, bookIds: List<Long>) -> Unit = { _, _ -> },
 )
 
 /**
@@ -111,7 +117,7 @@ fun LibraryScreen(
     var shelfDeletionAskedFor by rememberSaveable { mutableStateOf<Long?>(null) }
 
     val snackbars = remember { SnackbarHostState() }
-    LibraryMessages(messages, snackbars)
+    LibraryMessages(messages, snackbars, actions.onRestoreShelfOrder)
 
     val focusManager = LocalFocusManager.current
     val finishEditing = {
@@ -253,7 +259,11 @@ fun LibraryScreen(
  * anyone looking at the screen has just watched the book move.
  */
 @Composable
-private fun LibraryMessages(messages: Flow<LibraryMessage>, snackbars: SnackbarHostState) {
+private fun LibraryMessages(
+    messages: Flow<LibraryMessage>,
+    snackbars: SnackbarHostState,
+    onRestoreShelfOrder: (shelfId: Long, bookIds: List<Long>) -> Unit,
+) {
     val resources = LocalResources.current
     val view = LocalView.current
     LaunchedEffect(messages, snackbars, resources) {
@@ -267,6 +277,18 @@ private fun LibraryMessages(messages: Flow<LibraryMessage>, snackbars: SnackbarH
                 )
                 is LibraryMessage.BookRemoved -> launch {
                     snackbars.showSnackbar(resources.getString(R.string.feature_library_removed, message.title))
+                }
+                // A sort throws away an order that may have been arranged by hand, so it
+                // can be taken back for as long as the message is up.
+                is LibraryMessage.ShelfSorted -> launch {
+                    val result = snackbars.showSnackbar(
+                        message = resources.getString(R.string.feature_library_shelf_sorted, message.name),
+                        actionLabel = resources.getString(R.string.feature_library_undo),
+                        duration = SnackbarDuration.Long,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        onRestoreShelfOrder(message.shelfId, message.previousOrder)
+                    }
                 }
                 is LibraryMessage.ShelfDeleted -> launch {
                     snackbars.showSnackbar(

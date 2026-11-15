@@ -64,6 +64,8 @@ fun LibraryRoute(
             onAddShelf = { viewModel.addShelf(newShelfName) },
             onRenameShelf = viewModel::renameShelf,
             onDeleteShelf = viewModel::deleteShelf,
+            onSortShelf = viewModel::sortShelf,
+            onRestoreShelfOrder = viewModel::restoreShelfOrder,
         )
     }
 

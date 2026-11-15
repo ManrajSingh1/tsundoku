@@ -13,6 +13,14 @@ The build is the [preview-latest pre-release](../../../../releases/tag/preview-l
 code came in through [pull request 3](../../../../pull/3), and the screenshots are on the
 [ci-screenshots branch](../../../../tree/ci-screenshots).
 
+## Checked on the phone, 15 November
+
+On the S26 Ultra: PDF pages turn sideways, and double-tap zoom, pinch zoom and tap-to-turn
+all work and are to be kept. That answers both decisions below. Three changes were asked
+for and built: sort A to Z in edit mode, running a finger along a shelf to lift and open a
+book, and a much slimmer bar in the reader. See
+[decision record 0006](../decisions/0006-sort-riffle-reader-bar.md).
+
 ## What was built
 
 - **The carousel.** Opening a shelf shows its books as 3D covers: the tapped book faces

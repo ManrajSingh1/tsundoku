@@ -168,6 +168,24 @@ class TsundokuDatabaseTest {
     }
 
     @Test
+    fun aShelfIsPutInAGivenOrderWithoutLosingBooksThatWereNotNamed() = runTest {
+        val shelves = database.shelfDao()
+        val a = shelves.addBookToShelf(book("a"), "Manga")
+        val b = shelves.addBookToShelf(book("b"), "Manga")
+        val c = shelves.addBookToShelf(book("c"), "Manga")
+        val elsewhere = shelves.addBookToShelf(book("n"), "Novels")
+        val manga = shelves.findByName("Manga")!!.id
+
+        shelves.setShelfOrder(manga, listOf(c, a, b))
+        assertEquals(listOf("c", "a", "b"), order("Manga"))
+
+        // A book from another shelf is ignored, and one left out keeps its place at the end.
+        shelves.setShelfOrder(manga, listOf(b, elsewhere, c))
+        assertEquals(listOf("b", "c", "a"), order("Manga"))
+        assertEquals(listOf("n"), order("Novels"))
+    }
+
+    @Test
     fun movingABookClosesGapsLeftByRemovedBooks() = runTest {
         val shelves = database.shelfDao()
         shelves.addBookToShelf(book("a"), "Manga")

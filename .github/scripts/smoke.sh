@@ -24,9 +24,16 @@ shot() { adb exec-out screencap -p > "$SHOTS/$1.png"; }
 # apps sometimes raise "isn't responding" dialogs over ours; those are dismissed here so
 # they cannot swallow the next tap or hide the screen being checked.
 dump() {
-  for _ in 1 2 3 4; do
-    adb shell uiautomator dump /sdcard/ui.xml > /dev/null
-    adb pull /sdcard/ui.xml "$LOGS/ui.xml" > /dev/null
+  for _ in 1 2 3 4 5 6; do
+    # A window caught mid-transition has no root to dump. Left alone, the last screen's
+    # dump would be read again and a tap would land on what used to be there; so the old
+    # dump is removed first and a failed one is waited out.
+    adb shell rm -f /sdcard/ui.xml
+    adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1 || true
+    if ! adb pull /sdcard/ui.xml "$LOGS/ui.xml" > /dev/null 2>&1; then
+      sleep 2
+      continue
+    fi
     if grep -q "isn&apos;t responding\|isn't responding" "$LOGS/ui.xml"; then
       echo "Dismissing a system 'not responding' dialog."
       tap_in_dump "Wait"
@@ -214,7 +221,7 @@ fail_on_crash
 tap "Start reading" 6
 describe "a comic open in the reader"
 shot 04a-comic-reader
-expect "Close book" "Page 1 of 6" "Right to left"
+expect "Close book" "Page 1 of 6" "Reads right to left"
 adb shell input swipe 250 1200 850 1200 200
 sleep 4
 describe "the comic, one page on"

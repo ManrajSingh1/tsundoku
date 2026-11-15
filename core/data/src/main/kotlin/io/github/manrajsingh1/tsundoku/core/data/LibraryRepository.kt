@@ -31,6 +31,9 @@ interface LibraryRepository {
      */
     suspend fun moveBookToNextShelf(bookId: Long): Shelf?
 
+    /** Puts a shelf's books in the order given; books not named keep their order after them. */
+    suspend fun setShelfOrder(shelfId: Long, bookIds: List<Long>)
+
     /** Takes a book out of the library. The user's file is left exactly where it is. */
     suspend fun removeBook(bookId: Long)
 
@@ -70,6 +73,10 @@ class OfflineLibraryRepository @Inject constructor(
 
     override suspend fun moveBookToNextShelf(bookId: Long): Shelf? =
         shelfDao.moveBookToNextShelf(bookId)?.toModel()
+
+    override suspend fun setShelfOrder(shelfId: Long, bookIds: List<Long>) {
+        shelfDao.setShelfOrder(shelfId, bookIds)
+    }
 
     override suspend fun removeBook(bookId: Long) {
         val book = bookDao.findById(bookId) ?: return

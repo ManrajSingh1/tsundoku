@@ -40,6 +40,10 @@
     <string name="feature_library_done">Done</string>
     <string name="feature_library_cancel">Cancel</string>
     <string name="feature_library_shelf_name_label">Shelf name</string>
+    <string name="feature_library_sort_shelf_short">A–Z</string>
+    <string name="feature_library_sort_shelf">Sort %1$s A to Z</string>
+    <string name="feature_library_shelf_sorted">Sorted %1$s A to Z</string>
+    <string name="feature_library_undo">Undo</string>
     <string name="feature_library_delete_shelf">Delete shelf %1$s</string>
     <string name="feature_library_add_to_shelf">Add files to %1$s</string>
     <string name="feature_library_add_shelf">Add shelf</string>

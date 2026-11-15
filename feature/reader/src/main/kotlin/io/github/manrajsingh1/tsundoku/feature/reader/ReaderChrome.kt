@@ -1,15 +1,23 @@
 package io.github.manrajsingh1.tsundoku.feature.reader
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
@@ -20,9 +28,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -125,7 +133,10 @@ internal fun ReaderTopBar(viewModel: ReaderViewModel, onClose: () -> Unit) {
     )
 }
 
-/** Where the reader is in the book, and the few settings that belong to its format. */
+/**
+ * Where the reader is in the book, and the one or two settings that belong to its format,
+ * as a single slim pill that floats over the foot of the page.
+ */
 @Composable
 internal fun ReaderBottomBar(viewModel: ReaderViewModel) {
     val visible by viewModel.controlsVisible.collectAsStateWithLifecycle()
@@ -134,44 +145,71 @@ internal fun ReaderBottomBar(viewModel: ReaderViewModel) {
     val ready = state as? ReaderUiState.Ready
     if (!visible || ready == null) return
 
-    Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)) {
-            when (ready.book.format) {
-                BookFormat.CBZ -> ComicControls(viewModel, location)
-                BookFormat.PDF -> PdfControls(location)
-                BookFormat.EPUB -> EpubControls(viewModel, location)
+    Box(
+        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shadowElevation = 2.dp,
+            modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth(),
+        ) {
+            Row(
+                modifier = Modifier.heightIn(min = 48.dp).padding(start = 20.dp, end = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                when (ready.book.format) {
+                    BookFormat.CBZ -> ComicControls(viewModel, location)
+                    BookFormat.PDF -> PdfControls(location)
+                    BookFormat.EPUB -> EpubControls(viewModel, location)
+                }
             }
         }
     }
 }
 
+/** "12 / 180" to the eye, "Page 12 of 180" to a screen reader. */
 @Composable
-private fun ComicControls(viewModel: ReaderViewModel, location: ReaderLocation) {
+private fun PageLabel(page: Int, pageCount: Int) {
+    val spoken = stringResource(R.string.feature_reader_page_of, page + 1, pageCount)
+    Text(
+        text = stringResource(R.string.feature_reader_page_short, page + 1, pageCount),
+        style = MaterialTheme.typography.labelLarge,
+        maxLines = 1,
+        modifier = Modifier.semantics { contentDescription = spoken },
+    )
+}
+
+@Composable
+private fun PercentLabel(fraction: Double) {
+    val percent = ReadingProgress.percent(fraction)
+    val spoken = stringResource(R.string.feature_reader_percent, percent)
+    Text(
+        text = stringResource(R.string.feature_reader_percent_short, percent),
+        style = MaterialTheme.typography.labelLarge,
+        maxLines = 1,
+        modifier = Modifier.semantics { contentDescription = spoken },
+    )
+}
+
+@Composable
+private fun RowScope.ThinProgress(fraction: Double) {
+    LinearProgressIndicator(
+        progress = { fraction.toFloat() },
+        modifier = Modifier.weight(1f).padding(horizontal = 14.dp).height(4.dp),
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RowScope.ComicControls(viewModel: ReaderViewModel, location: ReaderLocation) {
     val rightToLeft by viewModel.rightToLeft.collectAsStateWithLifecycle()
     // While the slider is held it shows the page it would go to; the pager moves on release.
     var held by remember { mutableStateOf<Float?>(null) }
     val page = held?.let { ReaderMath.sliderPage(it, location.pageCount) } ?: (location.page ?: 0)
 
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = stringResource(R.string.feature_reader_page_of, page + 1, location.pageCount),
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
-        )
-        val spoken = stringResource(
-            if (rightToLeft) R.string.feature_reader_direction_rtl_spoken else R.string.feature_reader_direction_ltr_spoken,
-        )
-        TextButton(
-            onClick = { viewModel.setRightToLeft(!rightToLeft) },
-            modifier = Modifier.semantics { contentDescription = spoken },
-        ) {
-            Text(
-                stringResource(
-                    if (rightToLeft) R.string.feature_reader_direction_rtl else R.string.feature_reader_direction_ltr,
-                ),
-            )
-        }
-    }
+    PageLabel(page, location.pageCount)
     if (location.pageCount > 1) {
         val sliderName = stringResource(R.string.feature_reader_page_slider)
         // The slider runs the way the book does: in manga the first page is on the right.
@@ -186,51 +224,56 @@ private fun ComicControls(viewModel: ReaderViewModel, location: ReaderLocation) 
                     held = null
                 },
                 valueRange = 0f..(location.pageCount - 1).toFloat(),
-                modifier = Modifier.fillMaxWidth().semantics { contentDescription = sliderName },
+                modifier = Modifier.weight(1f).padding(horizontal = 14.dp).semantics { contentDescription = sliderName },
+                thumb = {
+                    Box(Modifier.size(16.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
+                },
+                track = { sliderState ->
+                    SliderDefaults.Track(
+                        sliderState = sliderState,
+                        modifier = Modifier.height(4.dp),
+                        thumbTrackGapSize = 0.dp,
+                        drawStopIndicator = null,
+                    )
+                },
             )
         }
+    } else {
+        Spacer(Modifier.weight(1f))
+    }
+    // An arrow pointing the way the pages run. Tapping it turns the book round, for this
+    // volume and the rest of its series.
+    val spoken = stringResource(
+        if (rightToLeft) R.string.feature_reader_direction_rtl_spoken else R.string.feature_reader_direction_ltr_spoken,
+    )
+    IconButton(
+        onClick = { viewModel.setRightToLeft(!rightToLeft) },
+        modifier = Modifier.semantics { contentDescription = spoken },
+    ) {
+        Text(text = if (rightToLeft) "\u2190" else "\u2192", style = MaterialTheme.typography.titleLarge)
     }
 }
 
 @Composable
-private fun PdfControls(location: ReaderLocation) {
+private fun RowScope.PdfControls(location: ReaderLocation) {
     val page = location.page
-    Text(
-        text = if (page != null && location.pageCount > 0) {
-            stringResource(R.string.feature_reader_page_of, page + 1, location.pageCount)
-        } else {
-            stringResource(R.string.feature_reader_percent, ReadingProgress.percent(location.fraction))
-        },
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.padding(vertical = 8.dp),
-    )
-    LinearProgressIndicator(
-        progress = { location.fraction.toFloat() },
-        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-    )
+    if (page != null && location.pageCount > 0) PageLabel(page, location.pageCount) else PercentLabel(location.fraction)
+    ThinProgress(location.fraction)
+    Spacer(Modifier.width(8.dp))
 }
 
 @Composable
-private fun EpubControls(viewModel: ReaderViewModel, location: ReaderLocation) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = stringResource(R.string.feature_reader_percent, ReadingProgress.percent(location.fraction)),
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
-        )
-        val smaller = stringResource(R.string.feature_reader_smaller_text)
-        val larger = stringResource(R.string.feature_reader_larger_text)
-        TextButton(
-            onClick = { viewModel.changeFontSize(-1) },
-            modifier = Modifier.semantics { contentDescription = smaller },
-        ) { Text(stringResource(R.string.feature_reader_smaller_text_label)) }
-        TextButton(
-            onClick = { viewModel.changeFontSize(1) },
-            modifier = Modifier.semantics { contentDescription = larger },
-        ) { Text(stringResource(R.string.feature_reader_larger_text_label)) }
-    }
-    LinearProgressIndicator(
-        progress = { location.fraction.toFloat() },
-        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-    )
+private fun RowScope.EpubControls(viewModel: ReaderViewModel, location: ReaderLocation) {
+    PercentLabel(location.fraction)
+    ThinProgress(location.fraction)
+    val smaller = stringResource(R.string.feature_reader_smaller_text)
+    val larger = stringResource(R.string.feature_reader_larger_text)
+    IconButton(
+        onClick = { viewModel.changeFontSize(-1) },
+        modifier = Modifier.semantics { contentDescription = smaller },
+    ) { Text(stringResource(R.string.feature_reader_smaller_text_label), style = MaterialTheme.typography.labelLarge) }
+    IconButton(
+        onClick = { viewModel.changeFontSize(1) },
+        modifier = Modifier.semantics { contentDescription = larger },
+    ) { Text(stringResource(R.string.feature_reader_larger_text_label), style = MaterialTheme.typography.titleMedium) }
 }
