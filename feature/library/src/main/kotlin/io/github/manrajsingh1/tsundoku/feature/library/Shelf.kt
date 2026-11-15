@@ -2,6 +2,9 @@ package io.github.manrajsingh1.tsundoku.feature.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +17,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -28,12 +32,18 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,7 +56,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -60,8 +75,11 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.manrajsingh1.tsundoku.core.model.Book
+import io.github.manrajsingh1.tsundoku.core.model.ShelfOrder
 import io.github.manrajsingh1.tsundoku.core.model.ShelfWithBooks
 import io.github.manrajsingh1.tsundoku.core.ui.theme.bookcase
+import kotlin.math.abs
+import kotlinx.coroutines.flow.collectLatest
 
 /**
  * One shelf: its name and count, a strip of spines that scrolls sideways when there are
@@ -88,6 +106,8 @@ internal fun ShelfSection(
                 name = entry.shelf.name,
                 shelfId = entry.shelf.id,
                 canDelete = canDelete,
+                canSort = remember(entry.books) { !ShelfOrder.isAlphabetical(entry.books) },
+                onSort = { actions.onSortShelf(entry.shelf) },
                 onRename = { actions.onRenameShelf(entry.shelf.id, it) },
                 onDelete = onAskDeleteShelf,
             )
@@ -136,6 +156,8 @@ private fun ShelfEditHeader(
     name: String,
     shelfId: Long,
     canDelete: Boolean,
+    canSort: Boolean,
+    onSort: () -> Unit,
     onRename: (String) -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -175,6 +197,15 @@ private fun ShelfEditHeader(
                     hadFocus = state.isFocused
                 },
         )
+        // Greyed out once the shelf is in order, which is also how to tell that it is.
+        val sortLabel = stringResource(R.string.feature_library_sort_shelf, name)
+        TextButton(
+            onClick = onSort,
+            enabled = canSort,
+            modifier = Modifier.padding(start = 4.dp).semantics { contentDescription = sortLabel },
+        ) {
+            Text(stringResource(R.string.feature_library_sort_shelf_short))
+        }
         IconButton(onClick = onDelete, enabled = canDelete) {
             Icon(
                 imageVector = Icons.Filled.Delete,
@@ -213,6 +244,39 @@ private fun ShelfStrip(
         }
     }
 
+    // Outside edit mode a finger can run along the spines: each hops up as the finger reaches
+    // it, and the one under the finger when it lifts off is opened. None of this state is
+    // read here, only in the gesture and in each spine, so the strip does not recompose.
+    val liftedId = remember { mutableStateOf<Long?>(null) }
+    val edgeSpeed = remember { mutableFloatStateOf(0f) }
+    val fingerX = remember { FloatArray(1) }
+    val currentBooks by rememberUpdatedState(books)
+    val openBook by rememberUpdatedState(actions.onOpenBook)
+    val haptics = LocalHapticFeedback.current
+    val reach = with(LocalDensity.current) { RiffleReach.toPx() }
+    val liftSpine: (index: Int?, tick: Boolean) -> Unit = remember(haptics) {
+        { index, tick ->
+            val id = index?.let { currentBooks.getOrNull(it)?.id }
+            if (id != liftedId.value) {
+                liftedId.value = id
+                if (tick && id != null) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            }
+        }
+    }
+    // Holding the finger near either end slides a long shelf along underneath it.
+    LaunchedEffect(listState) {
+        snapshotFlow { edgeSpeed.floatValue }.collectLatest { speed ->
+            if (speed == 0f) return@collectLatest
+            var last = withFrameNanos { it }
+            while (true) {
+                val now = withFrameNanos { it }
+                listState.scrollBy(speed * (now - last) / 1_000_000_000f)
+                last = now
+                liftSpine(listState.spineAt(fingerX[0], currentBooks.size, reach), true)
+            }
+        }
+    }
+
     val openLabel = stringResource(R.string.feature_library_action_open)
     val selectLabel = stringResource(R.string.feature_library_action_select)
     val deselectLabel = stringResource(R.string.feature_library_action_deselect)
@@ -226,7 +290,24 @@ private fun ShelfStrip(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.bookcase.shelfBack)
-            .height((SpineMetrics.MAX_HEIGHT * scale).dp + SpineLift + 8.dp),
+            .height((SpineMetrics.MAX_HEIGHT * scale).dp + SpineLift + 8.dp)
+            .then(
+                if (editing) {
+                    Modifier
+                } else {
+                    Modifier.riffle(
+                        listState = listState,
+                        bookCount = books.size,
+                        reach = reach,
+                        onLift = liftSpine,
+                        onEdge = { speed, x ->
+                            fingerX[0] = x
+                            edgeSpeed.floatValue = speed
+                        },
+                        onOpen = { index -> currentBooks.getOrNull(index)?.let { openBook(it.id) } },
+                    )
+                },
+            ),
         contentPadding = PaddingValues(horizontal = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.Bottom,
@@ -260,6 +341,7 @@ private fun ShelfStrip(
                     }
                 },
                 modifier = Modifier.animateItem(),
+                lifted = { liftedId.value == book.id },
             )
         }
         if (editing) {
@@ -281,6 +363,105 @@ private fun ShelfStrip(
                 )
             }
         }
+    }
+}
+
+/** How far from a spine a sliding finger may be and still count as on it. */
+private val RiffleReach = 48.dp
+
+/**
+ * The book nearest to [x] (in the strip's own pixels) among those on screen, or null if
+ * none is within [reach].
+ */
+private fun LazyListState.spineAt(x: Float, bookCount: Int, reach: Float): Int? {
+    val info = layoutInfo
+    // Item offsets are measured from where the content starts, after the padding.
+    val position = x - info.beforeContentPadding
+    var nearest: Int? = null
+    var nearestDistance = Float.MAX_VALUE
+    for (item in info.visibleItemsInfo) {
+        if (item.index >= bookCount) continue
+        val distance = when {
+            position < item.offset -> item.offset - position
+            position > item.offset + item.size -> position - (item.offset + item.size)
+            else -> 0f
+        }
+        if (distance < nearestDistance) {
+            nearest = item.index
+            nearestDistance = distance
+        }
+    }
+    return if (nearestDistance <= reach) nearest else null
+}
+
+/**
+ * Running a finger along the shelf. A touch lifts the book under it; once the finger has
+ * moved sideways the lift follows it from book to book, and the book it is on when it
+ * leaves the glass is opened. A finger that drifts well above or below the shelf lets the
+ * book drop and opens nothing. Moving up or down first is left alone: that scrolls the page.
+ *
+ * Taps are not handled here. Each spine is its own button, which is what a screen reader
+ * and a keyboard use.
+ *
+ * The gesture is watched on the way down to the spines, ahead of the row's own scrolling,
+ * so the row still scrolls for a screen reader but not under a sliding finger. A long shelf
+ * is reached by holding the finger near either end.
+ *
+ * @param onLift the book to lift (an index, or null for none) and whether to tick.
+ * @param onEdge how fast the shelf should slide, in pixels a second, and where the finger is.
+ */
+private fun Modifier.riffle(
+    listState: LazyListState,
+    bookCount: Int,
+    reach: Float,
+    onLift: (index: Int?, tick: Boolean) -> Unit,
+    onEdge: (speed: Float, x: Float) -> Unit,
+    onOpen: (index: Int) -> Unit,
+): Modifier = pointerInput(listState, bookCount, reach) {
+    val slop = viewConfiguration.touchSlop
+    val edgeZone = 56.dp.toPx()
+    val maxSpeed = 900.dp.toPx()
+    val letGo = 40.dp.toPx()
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        onLift(listState.spineAt(down.position.x, bookCount, 0f), false)
+        var riffling = false
+        var lifted: Int? = null
+        try {
+            while (true) {
+                val event = awaitPointerEvent(PointerEventPass.Initial)
+                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                if (!change.pressed) break
+                val dx = change.position.x - down.position.x
+                val dy = change.position.y - down.position.y
+                if (!riffling) {
+                    if (abs(dy) > slop && abs(dy) >= abs(dx)) {
+                        lifted = null
+                        break
+                    }
+                    if (abs(dx) > slop) riffling = true
+                }
+                if (riffling) {
+                    change.consume()
+                    val x = change.position.x
+                    val y = change.position.y
+                    val onShelf = y > -letGo && y < size.height + letGo
+                    lifted = if (onShelf) listState.spineAt(x, bookCount, reach) else null
+                    onLift(lifted, true)
+                    val speed = when {
+                        !onShelf -> 0f
+                        x < edgeZone -> -maxSpeed * ((edgeZone - x) / edgeZone).coerceIn(0f, 1f)
+                        x > size.width - edgeZone -> maxSpeed * ((x - (size.width - edgeZone)) / edgeZone).coerceIn(0f, 1f)
+                        else -> 0f
+                    }
+                    onEdge(speed, x)
+                }
+            }
+        } finally {
+            onEdge(0f, 0f)
+        }
+        if (riffling) lifted?.let(onOpen)
+        onLift(null, false)
     }
 }
 

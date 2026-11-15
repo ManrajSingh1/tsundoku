@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.manrajsingh1.tsundoku.core.data.LibraryRepository
 import io.github.manrajsingh1.tsundoku.core.model.Book
 import io.github.manrajsingh1.tsundoku.core.model.Shelf
+import io.github.manrajsingh1.tsundoku.core.model.ShelfOrder
 import io.github.manrajsingh1.tsundoku.core.model.ShelfWithBooks
 import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
@@ -37,6 +38,9 @@ sealed interface LibraryMessage {
     data class BookMovedToShelf(val title: String, val shelfName: String) : LibraryMessage
 
     data class BookRemoved(val title: String) : LibraryMessage
+
+    /** A shelf was put in A to Z order. [previousOrder] is its book ids as they were, to undo it. */
+    data class ShelfSorted(val shelfId: Long, val name: String, val previousOrder: List<Long>) : LibraryMessage
 
     data class ShelfDeleted(val name: String, val bookCount: Int, val movedTo: String) : LibraryMessage
 }
@@ -89,6 +93,22 @@ class LibraryViewModel @Inject constructor(
             libraryRepository.removeBook(book.id)
             messageChannel.send(LibraryMessage.BookRemoved(book.title))
         }
+    }
+
+    /** Puts a shelf's books in A to Z order by title. Does nothing if they already are. */
+    fun sortShelf(shelf: Shelf) {
+        val books = shelves.firstOrNull { it.shelf.id == shelf.id }?.books ?: return
+        if (ShelfOrder.isAlphabetical(books)) return
+        val sorted = ShelfOrder.alphabetical(books).map { it.id }
+        viewModelScope.launch {
+            libraryRepository.setShelfOrder(shelf.id, sorted)
+            messageChannel.send(LibraryMessage.ShelfSorted(shelf.id, shelf.name, books.map { it.id }))
+        }
+    }
+
+    /** Puts a shelf back in an earlier order: the undo for [sortShelf]. */
+    fun restoreShelfOrder(shelfId: Long, bookIds: List<Long>) {
+        viewModelScope.launch { libraryRepository.setShelfOrder(shelfId, bookIds) }
     }
 
     /** Adds an empty shelf at the bottom, named [baseName] or the next free "[baseName] 2". */

@@ -20,10 +20,12 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.manrajsingh1.tsundoku.core.model.Book
 import io.github.manrajsingh1.tsundoku.core.model.BookFormat
@@ -107,6 +109,7 @@ class LibraryScreenTest {
                         onAddShelf = { calls += "add shelf" },
                         onRenameShelf = { id, name -> calls += "rename $id to $name" },
                         onDeleteShelf = { calls += "delete shelf ${it.id}" },
+                        onSortShelf = { calls += "sort shelf ${it.id}" },
                     )
                 }
                 LibraryScreen(
@@ -292,5 +295,52 @@ class LibraryScreenTest {
         compose.onNodeWithText("Add shelf").performClick()
 
         assertEquals(listOf("add files to shelf 1", "add shelf"), calls)
+    }
+
+    @Test
+    fun aShelfOutOfOrderOffersToBeSortedAndOneInOrderDoesNot() {
+        show(listOf(manga, novels), editing = true)
+
+        compose.onNodeWithContentDescription("Sort Novels A to Z").assertIsNotEnabled()
+        compose.onNodeWithContentDescription("Sort Manga A to Z").assertIsEnabled().performClick()
+
+        assertEquals(listOf("sort shelf 1"), calls)
+    }
+
+    @Test
+    fun aFingerRunAlongTheShelfOpensTheBookItLeavesFrom() {
+        show(listOf(manga, novels))
+
+        // Down on the first spine, along to the second, and off.
+        val first = compose.onNodeWithContentDescription("The Third Volume, volume 3, CBZ").fetchSemanticsNode().boundsInRoot
+        val second = compose.onNodeWithContentDescription("Quiet Shelf, CBZ").fetchSemanticsNode().boundsInRoot
+        compose.onRoot().performTouchInput {
+            down(first.center)
+            val steps = 12
+            for (step in 1..steps) {
+                moveTo(first.center + (second.center - first.center) * (step / steps.toFloat()))
+            }
+            up()
+        }
+
+        assertEquals(listOf("open 2"), calls)
+    }
+
+    @Test
+    fun aFingerThatWandersOffTheShelfOpensNothing() {
+        show(listOf(manga, novels))
+
+        val first = compose.onNodeWithContentDescription("The Third Volume, volume 3, CBZ").fetchSemanticsNode().boundsInRoot
+        val second = compose.onNodeWithContentDescription("Quiet Shelf, CBZ").fetchSemanticsNode().boundsInRoot
+        compose.onRoot().performTouchInput {
+            down(first.center)
+            moveTo((first.center + second.center) / 2f)
+            moveTo(second.center)
+            // Well above the shelf: the book is let go.
+            moveTo(second.center.copy(y = second.top - 300f))
+            up()
+        }
+
+        assertEquals(emptyList<String>(), calls)
     }
 }

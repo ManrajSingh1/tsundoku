@@ -214,7 +214,7 @@ fail_on_crash
 tap "Start reading" 6
 describe "a comic open in the reader"
 shot 04a-comic-reader
-expect "Close book" "Page 1 of 6" "Right to left"
+expect "Close book" "Page 1 of 6" "Reads right to left"
 adb shell input swipe 250 1200 850 1200 200
 sleep 4
 describe "the comic, one page on"

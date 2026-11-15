@@ -142,6 +142,23 @@ abstract class ShelfDao {
     }
 
     /**
+     * Puts a shelf's books in the order given. Ids that are not on the shelf are ignored, and
+     * books on the shelf that are not named keep their order after the ones that are, so a
+     * book that arrived in the meantime is never lost.
+     */
+    @Transaction
+    open suspend fun setShelfOrder(shelfId: Long, bookIds: List<Long>) {
+        val current = links(shelfId)
+        val onShelf = current.mapTo(HashSet()) { it.bookId }
+        val named = bookIds.filter { it in onShelf }.distinct()
+        val rest = current.map { it.bookId }.filterNot { it in named }
+        val was = current.associate { it.bookId to it.position }
+        (named + rest).forEachIndexed { index, bookId ->
+            if (was[bookId] != index) setBookPosition(bookId, index)
+        }
+    }
+
+    /**
      * Moves a book to the end of the shelf after its own, going round from the last shelf to
      * the first. Returns the shelf it landed on, or null if there is no other shelf.
      */

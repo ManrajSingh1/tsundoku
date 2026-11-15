@@ -45,6 +45,10 @@ class LibraryViewModelTest {
             return nextShelf
         }
 
+        override suspend fun setShelfOrder(shelfId: Long, bookIds: List<Long>) {
+            calls += "order $shelfId as $bookIds"
+        }
+
         override suspend fun removeBook(bookId: Long) {
             calls += "remove $bookId"
         }
@@ -256,5 +260,38 @@ class LibraryViewModelTest {
         runCurrent()
 
         assertEquals(listOf("rename 1 to Shonen"), repository.calls)
+    }
+
+    @Test
+    fun `sorting a shelf orders it by title and remembers how it was`() = runTest(dispatcher) {
+        val books = listOf(book(1).copy(title = "Zebra"), book(2).copy(title = "apple 10"), book(3).copy(title = "Apple 9"))
+        val (viewModel, messages) = loaded(ShelfWithBooks(manga, books))
+
+        viewModel.sortShelf(manga)
+        runCurrent()
+
+        assertEquals(listOf("order 1 as [3, 2, 1]"), repository.calls)
+        assertEquals(listOf(LibraryMessage.ShelfSorted(1, "Manga", listOf(1L, 2L, 3L))), messages)
+    }
+
+    @Test
+    fun `sorting a shelf that is already in order does nothing`() = runTest(dispatcher) {
+        val (viewModel, messages) = loaded(ShelfWithBooks(manga, listOf(book(1), book(2))))
+
+        viewModel.sortShelf(manga)
+        runCurrent()
+
+        assertEquals(emptyList<String>(), repository.calls)
+        assertEquals(emptyList<LibraryMessage>(), messages)
+    }
+
+    @Test
+    fun `undoing a sort puts the old order back`() = runTest(dispatcher) {
+        val (viewModel, _) = loaded(ShelfWithBooks(manga, listOf(book(1), book(2))))
+
+        viewModel.restoreShelfOrder(1, listOf(2L, 1L))
+        runCurrent()
+
+        assertEquals(listOf("order 1 as [2, 1]"), repository.calls)
     }
 }
