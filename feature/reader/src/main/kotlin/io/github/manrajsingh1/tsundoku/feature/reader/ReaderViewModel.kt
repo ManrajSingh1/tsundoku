@@ -10,6 +10,7 @@ import io.github.manrajsingh1.tsundoku.core.data.SettingsRepository
 import io.github.manrajsingh1.tsundoku.core.data.reading.PublicationSource
 import io.github.manrajsingh1.tsundoku.core.model.Book
 import io.github.manrajsingh1.tsundoku.core.model.BookFormat
+import io.github.manrajsingh1.tsundoku.core.model.PageTheme
 import io.github.manrajsingh1.tsundoku.core.model.ReadingDirection
 import io.github.manrajsingh1.tsundoku.core.model.ReadingProgress
 import javax.inject.Inject
@@ -55,6 +56,15 @@ class ReaderViewModel @Inject constructor(
 
     private val bookId: Long = savedStateHandle.get<Long>(ReaderActivity.EXTRA_BOOK_ID) ?: -1L
     private val restart: Boolean = savedStateHandle.get<Boolean>(ReaderActivity.EXTRA_RESTART) ?: false
+
+    // Settings cannot change while a book is open, so one reading of them is enough.
+    private val preferences = settings.preferencesNow()
+
+    /** Whether the bars take their colours from the wallpaper, as the rest of the app does. */
+    val dynamicColor: Boolean = preferences.dynamicColor
+
+    /** The page colour chosen for EPUBs. */
+    val epubPageTheme: PageTheme = preferences.epubPageTheme
 
     private val _state = MutableStateFlow<ReaderUiState>(ReaderUiState.Loading)
     val state: StateFlow<ReaderUiState> = _state.asStateFlow()

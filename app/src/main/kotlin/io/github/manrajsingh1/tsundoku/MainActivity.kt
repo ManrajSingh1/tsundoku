@@ -11,6 +11,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.layout.FoldingFeature
 import androidx.window.layout.WindowInfoTracker
 import dagger.hilt.android.AndroidEntryPoint
+import io.github.manrajsingh1.tsundoku.core.data.SettingsRepository
 import io.github.manrajsingh1.tsundoku.core.ui.theme.TsundokuTheme
 import io.github.manrajsingh1.tsundoku.feature.importing.ImportStatusBar
 import io.github.manrajsingh1.tsundoku.feature.importing.ImportViewModel
@@ -19,6 +20,8 @@ import io.github.manrajsingh1.tsundoku.feature.library.LibraryRoute
 import io.github.manrajsingh1.tsundoku.feature.library.LibraryViewModel
 import io.github.manrajsingh1.tsundoku.feature.library.ReadingProgressViewModel
 import io.github.manrajsingh1.tsundoku.feature.reader.ReaderActivity
+import io.github.manrajsingh1.tsundoku.feature.settings.SettingsActivity
+import javax.inject.Inject
 import kotlinx.coroutines.flow.map
 
 /**
@@ -32,11 +35,16 @@ class MainActivity : ComponentActivity() {
     private val importViewModel: ImportViewModel by viewModels()
     private val progressViewModel: ReadingProgressViewModel by viewModels()
 
+    @Inject
+    lateinit var settings: SettingsRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        val preferencesAtStart = settings.preferencesNow()
         setContent {
-            TsundokuTheme {
+            val preferences by settings.preferences.collectAsStateWithLifecycle(initialValue = preferencesAtStart)
+            TsundokuTheme(dynamicColor = preferences.dynamicColor) {
                 // True while an unfolded foldable's hinge runs down the middle of the window.
                 val hasVerticalFold by remember {
                     WindowInfoTracker.getOrCreate(this).windowLayoutInfo(this).map { layout ->
@@ -62,6 +70,8 @@ class MainActivity : ComponentActivity() {
                     // The library stays as it is underneath, so closing the book returns to
                     // the same shelf with the same book facing front.
                     onReadBook = { bookId, restart -> startActivity(ReaderActivity.intent(this, bookId, restart)) },
+                    flatCarousel = preferences.flatCarousel,
+                    onOpenSettings = { startActivity(SettingsActivity.intent(this)) },
                     importStatus = {
                         ImportStatusBar(status = importStatus, onDismiss = importViewModel::onDismissResult)
                     },

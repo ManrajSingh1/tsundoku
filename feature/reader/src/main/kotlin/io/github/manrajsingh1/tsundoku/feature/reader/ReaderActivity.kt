@@ -18,6 +18,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.manrajsingh1.tsundoku.core.model.BookFormat
+import io.github.manrajsingh1.tsundoku.core.model.PageTheme
 import io.github.manrajsingh1.tsundoku.core.ui.theme.TsundokuTheme
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
@@ -59,13 +60,15 @@ class ReaderActivity : AppCompatActivity() {
 
         val content = findViewById<ComposeView>(R.id.feature_reader_content)
         content.setContent {
-            TsundokuTheme { ReaderContent(viewModel, onClose = ::finish, onPageTapped = ::onPageTapped) }
+            TsundokuTheme(dynamicColor = viewModel.dynamicColor) {
+                ReaderContent(viewModel, onClose = ::finish, onPageTapped = ::onPageTapped)
+            }
         }
         findViewById<ComposeView>(R.id.feature_reader_top_bar).setContent {
-            TsundokuTheme { ReaderTopBar(viewModel, onClose = ::finish) }
+            TsundokuTheme(dynamicColor = viewModel.dynamicColor) { ReaderTopBar(viewModel, onClose = ::finish) }
         }
         findViewById<ComposeView>(R.id.feature_reader_bottom_bar).setContent {
-            TsundokuTheme { ReaderBottomBar(viewModel) }
+            TsundokuTheme(dynamicColor = viewModel.dynamicColor) { ReaderBottomBar(viewModel) }
         }
 
         lifecycleScope.launch {
@@ -178,11 +181,17 @@ class ReaderActivity : AppCompatActivity() {
         }
     }
 
-    /** EPUB pages follow the system's light or dark theme, at the reader's chosen text size. */
+    /** EPUB pages take the colour chosen in Settings, at the reader's chosen text size. */
     private fun epubPreferences(fontSize: Double): EpubPreferences {
         val night = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
             Configuration.UI_MODE_NIGHT_YES
-        return EpubPreferences(fontSize = fontSize, theme = if (night) Theme.DARK else Theme.LIGHT)
+        val theme = when (viewModel.epubPageTheme) {
+            PageTheme.SYSTEM -> if (night) Theme.DARK else Theme.LIGHT
+            PageTheme.LIGHT -> Theme.LIGHT
+            PageTheme.SEPIA -> Theme.SEPIA
+            PageTheme.DARK -> Theme.DARK
+        }
+        return EpubPreferences(fontSize = fontSize, theme = theme)
     }
 
     companion object {
