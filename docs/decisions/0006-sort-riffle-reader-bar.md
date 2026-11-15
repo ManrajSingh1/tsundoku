@@ -23,15 +23,19 @@ it does, so a book imported between a sort and its undo is not lost. No schema c
 
 ## A finger run along a shelf lifts each book in turn and opens the one it leaves from
 
-Outside edit mode, touching a spine lifts it. Slide sideways and the lift follows the
+Outside edit mode, resting a finger on a spine lifts it. Slide sideways and the lift follows the
 finger from book to book, with a light tick for each; lift the finger and that book opens
 in the carousel. Drifting well above or below the shelf drops the book and opens nothing.
 
-What this changes: **a sideways drag no longer scrolls a long shelf.** A drag cannot mean
-both. Instead, holding the finger near either end slides the shelf along underneath it,
-faster the nearer the edge. Up-and-down drags still scroll the page, taps still open a
-book, and the row still scrolls for a screen reader, whose gestures do not pass through
-this code. Edit mode is unchanged: there a drag scrolls and a tap selects.
+**A sideways drag still scrolls the shelf.** (The first build of this took the drag over
+entirely; that was changed the same day.) A short hold decides which is meant:
+
+- Move straight away and the shelf scrolls, fling and all, as it always did.
+- Rest on a book for a fifth of a second and it lifts, with a tick. From then on sliding
+  runs along the books, and holding near either end slides a long shelf underneath.
+
+Resting on a book and letting go without moving is still a tap. Up-and-down drags still
+scroll the page, the row still scrolls for a screen reader, and edit mode is unchanged.
 
 Only the spine reached and the spine left recompose as the finger moves.
 
