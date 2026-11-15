@@ -316,6 +316,8 @@ class LibraryScreenTest {
         val second = compose.onNodeWithContentDescription("Quiet Shelf, CBZ").fetchSemanticsNode().boundsInRoot
         compose.onRoot().performTouchInput {
             down(first.center)
+            // Rest on the book until it lifts.
+            move(400L)
             val steps = 12
             for (step in 1..steps) {
                 moveTo(first.center + (second.center - first.center) * (step / steps.toFloat()))
@@ -334,6 +336,7 @@ class LibraryScreenTest {
         val second = compose.onNodeWithContentDescription("Quiet Shelf, CBZ").fetchSemanticsNode().boundsInRoot
         compose.onRoot().performTouchInput {
             down(first.center)
+            move(400L)
             moveTo((first.center + second.center) / 2f)
             moveTo(second.center)
             // Well above the shelf: the book is let go.
@@ -342,5 +345,37 @@ class LibraryScreenTest {
         }
 
         assertEquals(emptyList<String>(), calls)
+    }
+
+    @Test
+    fun aDragThatDoesNotRestFirstIsAScrollAndOpensNothing() {
+        show(listOf(manga, novels))
+
+        val first = compose.onNodeWithContentDescription("The Third Volume, volume 3, CBZ").fetchSemanticsNode().boundsInRoot
+        val second = compose.onNodeWithContentDescription("Quiet Shelf, CBZ").fetchSemanticsNode().boundsInRoot
+        compose.onRoot().performTouchInput {
+            down(first.center)
+            val steps = 6
+            for (step in 1..steps) {
+                moveTo(first.center + (second.center - first.center) * (step / steps.toFloat()))
+            }
+            up()
+        }
+
+        assertEquals(emptyList<String>(), calls)
+    }
+
+    @Test
+    fun restingOnABookAndLettingGoIsStillATap() {
+        show(listOf(manga, novels))
+
+        val first = compose.onNodeWithContentDescription("The Third Volume, volume 3, CBZ").fetchSemanticsNode().boundsInRoot
+        compose.onRoot().performTouchInput {
+            down(first.center)
+            move(300L)
+            up()
+        }
+
+        assertEquals(listOf("open 1"), calls)
     }
 }

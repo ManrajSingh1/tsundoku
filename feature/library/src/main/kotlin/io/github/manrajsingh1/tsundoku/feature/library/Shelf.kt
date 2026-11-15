@@ -244,8 +244,8 @@ private fun ShelfStrip(
         }
     }
 
-    // Outside edit mode a finger can run along the spines: each hops up as the finger reaches
-    // it, and the one under the finger when it lifts off is opened. None of this state is
+    // Outside edit mode a finger that rests on a spine and then slides runs along the spines:
+    // each hops up as the finger reaches it, and the one under it when it lifts off is opened. None of this state is
     // read here, only in the gesture and in each spine, so the strip does not recompose.
     val liftedId = remember { mutableStateOf<Long?>(null) }
     val edgeSpeed = remember { mutableFloatStateOf(0f) }
@@ -394,18 +394,23 @@ private fun LazyListState.spineAt(x: Float, bookCount: Int, reach: Float): Int? 
     return if (nearestDistance <= reach) nearest else null
 }
 
+/** How long a finger rests on a book before the book lifts and sliding takes over from scrolling. */
+private const val RIFFLE_HOLD_MILLIS = 200L
+
 /**
- * Running a finger along the shelf. A touch lifts the book under it; once the finger has
- * moved sideways the lift follows it from book to book, and the book it is on when it
- * leaves the glass is opened. A finger that drifts well above or below the shelf lets the
- * book drop and opens nothing. Moving up or down first is left alone: that scrolls the page.
+ * Running a finger along the shelf, alongside ordinary scrolling. Which one a drag means is
+ * decided by a short hold:
+ *
+ * - **Move straight away** and nothing here takes part: a sideways drag scrolls the shelf,
+ *   with its fling, and an up-or-down drag scrolls the page.
+ * - **Rest on a book for a moment** and it lifts, with a tick. From then on the lift follows
+ *   the finger from book to book, and the book it is on when it leaves the glass is opened.
+ *   A finger that drifts well above or below the shelf lets the book drop and opens nothing.
+ *   Holding near either end slides a long shelf along underneath.
  *
  * Taps are not handled here. Each spine is its own button, which is what a screen reader
- * and a keyboard use.
- *
- * The gesture is watched on the way down to the spines, ahead of the row's own scrolling,
- * so the row still scrolls for a screen reader but not under a sliding finger. A long shelf
- * is reached by holding the finger near either end.
+ * and a keyboard use. Once the book has lifted, the gesture is taken on the way down to the
+ * spines, ahead of the row's own scrolling, so the two never both act on one drag.
  *
  * @param onLift the book to lift (an index, or null for none) and whether to tick.
  * @param onEdge how fast the shelf should slide, in pixels a second, and where the finger is.
@@ -424,43 +429,49 @@ private fun Modifier.riffle(
     val letGo = 40.dp.toPx()
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-        onLift(listState.spineAt(down.position.x, bookCount, 0f), false)
-        var riffling = false
-        var lifted: Int? = null
+
+        // Until the hold is over this only watches. A finger that moves or lifts first is
+        // scrolling or tapping, and is left to the row, the page and the spine.
+        var left = false
+        withTimeoutOrNull(RIFFLE_HOLD_MILLIS) {
+            while (!left) {
+                val event = awaitPointerEvent(PointerEventPass.Initial)
+                val change = event.changes.firstOrNull { it.id == down.id }
+                left = change == null || !change.pressed || (change.position - down.position).getDistance() > slop
+            }
+        }
+        var lifted: Int? = if (left) null else listState.spineAt(down.position.x, bookCount, 0f)
+        if (lifted == null) return@awaitEachGesture
+        onLift(lifted, true)
+
+        // Held without moving and let go is still a tap, and the spine opens the book. Once
+        // the finger has moved, the spine has lost the tap and opening falls to this.
+        var slid = false
         try {
             while (true) {
                 val event = awaitPointerEvent(PointerEventPass.Initial)
                 val change = event.changes.firstOrNull { it.id == down.id } ?: break
                 if (!change.pressed) break
-                val dx = change.position.x - down.position.x
-                val dy = change.position.y - down.position.y
-                if (!riffling) {
-                    if (abs(dy) > slop && abs(dy) >= abs(dx)) {
-                        lifted = null
-                        break
-                    }
-                    if (abs(dx) > slop) riffling = true
+                if (!slid && (change.position - down.position).getDistance() <= slop) continue
+                slid = true
+                change.consume()
+                val x = change.position.x
+                val y = change.position.y
+                val onShelf = y > -letGo && y < size.height + letGo
+                lifted = if (onShelf) listState.spineAt(x, bookCount, reach) else null
+                onLift(lifted, true)
+                val speed = when {
+                    !onShelf -> 0f
+                    x < edgeZone -> -maxSpeed * ((edgeZone - x) / edgeZone).coerceIn(0f, 1f)
+                    x > size.width - edgeZone -> maxSpeed * ((x - (size.width - edgeZone)) / edgeZone).coerceIn(0f, 1f)
+                    else -> 0f
                 }
-                if (riffling) {
-                    change.consume()
-                    val x = change.position.x
-                    val y = change.position.y
-                    val onShelf = y > -letGo && y < size.height + letGo
-                    lifted = if (onShelf) listState.spineAt(x, bookCount, reach) else null
-                    onLift(lifted, true)
-                    val speed = when {
-                        !onShelf -> 0f
-                        x < edgeZone -> -maxSpeed * ((edgeZone - x) / edgeZone).coerceIn(0f, 1f)
-                        x > size.width - edgeZone -> maxSpeed * ((x - (size.width - edgeZone)) / edgeZone).coerceIn(0f, 1f)
-                        else -> 0f
-                    }
-                    onEdge(speed, x)
-                }
+                onEdge(speed, x)
             }
         } finally {
             onEdge(0f, 0f)
         }
-        if (riffling) lifted?.let(onOpen)
+        if (slid) lifted?.let(onOpen)
         onLift(null, false)
     }
 }
