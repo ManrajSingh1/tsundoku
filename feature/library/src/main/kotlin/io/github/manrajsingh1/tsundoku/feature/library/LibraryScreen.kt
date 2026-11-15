@@ -26,7 +26,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -36,7 +35,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -47,7 +46,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalResources
@@ -57,6 +55,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.manrajsingh1.tsundoku.core.model.Book
 import io.github.manrajsingh1.tsundoku.core.model.Shelf
@@ -85,6 +84,7 @@ class LibraryActions(
     val onSortShelf: (Shelf) -> Unit = {},
     /** Puts a shelf back in an earlier order of book ids: the undo for a sort. */
     val onRestoreShelfOrder: (shelfId: Long, bookIds: List<Long>) -> Unit = { _, _ -> },
+    val onOpenSettings: () -> Unit = {},
 )
 
 /**
@@ -126,18 +126,21 @@ fun LibraryScreen(
         actions.onSetEditing(false)
     }
 
-    // One UI's extended app bar: tall with a large title at rest, condensing as the list scrolls.
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
         // The screen shrinks above the keyboard, so a shelf name being typed stays in view.
-        modifier = modifier.imePadding().nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = modifier.imePadding(),
         topBar = {
-            LargeTopAppBar(
+            // One line, always. The tall One UI header was tried first and gave a fifth of
+            // the screen to the app's name; the shelves are what the screen is for.
+            TopAppBar(
                 title = {
                     Text(
-                        stringResource(
+                        text = stringResource(
                             if (editing) R.string.feature_library_edit_title else R.string.feature_library_title,
                         ),
+                        style = MaterialTheme.typography.headlineSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 },
                 actions = {
@@ -147,10 +150,10 @@ fun LibraryScreen(
                             onEdit = { actions.onSetEditing(true) },
                             onAddFiles = actions.onAddFiles,
                             onAddFolder = actions.onAddFolder,
+                            onOpenSettings = actions.onOpenSettings,
                         )
                     }
                 },
-                scrollBehavior = scrollBehavior,
             )
         },
         bottomBar = {
@@ -317,6 +320,7 @@ private fun LibraryMenu(
     onEdit: () -> Unit,
     onAddFiles: () -> Unit,
     onAddFolder: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
@@ -345,6 +349,13 @@ private fun LibraryMenu(
                 onClick = {
                     open = false
                     onAddFolder()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.feature_library_settings)) },
+                onClick = {
+                    open = false
+                    onOpenSettings()
                 },
             )
         }

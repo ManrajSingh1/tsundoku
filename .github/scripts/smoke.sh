@@ -207,6 +207,24 @@ expect "Documents" "Quarterly report, PDF"
 adb shell input swipe 500 700 500 1900 400
 sleep 3
 
+# 3a. Settings. Choosing the dark theme asks Android to redraw the app dark, which rebuilds
+#     the screen; it must come back as it was, and go back to following the phone.
+tap "More options"
+tap "Settings"
+describe "the settings screen"
+shot 03a-settings
+expect "Appearance" "Theme" "Wallpaper colours" "Flat covers" "Comics read right to left"
+tap "Dark" 4
+describe "settings after choosing the dark theme"
+shot 03b-settings-dark
+expect "Settings" "Theme" "Flat covers"
+fail_on_crash
+tap "Same as the phone" 4
+tap "Back to library"
+describe "the library after visiting settings"
+expect "Manga"
+fail_on_crash
+
 # 4. Tapping a spine opens its shelf at that book; the arrows step along it; back returns.
 tap "The Third Volume"
 describe "an open book"

@@ -26,6 +26,7 @@
 
     <!-- The app bar's menu. -->
     <string name="feature_library_more">More options</string>
+    <string name="feature_library_settings">Settings</string>
     <string name="feature_library_edit_shelves">Edit shelves</string>
 
     <!-- Edit mode. -->

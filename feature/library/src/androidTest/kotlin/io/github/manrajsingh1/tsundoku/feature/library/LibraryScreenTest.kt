@@ -110,6 +110,7 @@ class LibraryScreenTest {
                         onRenameShelf = { id, name -> calls += "rename $id to $name" },
                         onDeleteShelf = { calls += "delete shelf ${it.id}" },
                         onSortShelf = { calls += "sort shelf ${it.id}" },
+                        onOpenSettings = { calls += "settings" },
                     )
                 }
                 LibraryScreen(
@@ -377,5 +378,15 @@ class LibraryScreenTest {
         }
 
         assertEquals(listOf("open 1"), calls)
+    }
+
+    @Test
+    fun settingsAreReachedFromTheMenu() {
+        show(listOf(manga, novels))
+
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Settings").performClick()
+
+        assertEquals(listOf("settings"), calls)
     }
 }
