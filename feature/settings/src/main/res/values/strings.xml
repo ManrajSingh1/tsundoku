@@ -39,15 +39,15 @@
     <string name="feature_settings_backup_restore">Restore from a backup</string>
     <string name="feature_settings_backup_restore_body">Puts shelves, reading positions and settings back as a backup had them.</string>
     <string name="feature_settings_restore_title">Restore from a backup?</string>
-    <string name="feature_settings_restore_body">Your shelves, reading positions and settings will change to match the backup. No book is ever removed. Books the backup knows that aren't in the library yet go back to their places when you add their files.</string>
+    <string name="feature_settings_restore_body">Your shelves, reading positions and settings will change to match the backup. No book is ever removed. Books the backup knows that aren\'t in the library yet go back to their places when you add their files.</string>
     <string name="feature_settings_restore_choose">Choose backup</string>
     <string name="feature_settings_cancel">Cancel</string>
     <string name="feature_settings_backup_saved">Backup saved. Shelves: %1$d. Books: %2$d.</string>
-    <string name="feature_settings_backup_not_saved">The backup couldn't be saved there. Try another folder.</string>
+    <string name="feature_settings_backup_not_saved">The backup couldn\'t be saved there. Try another folder.</string>
     <string name="feature_settings_restored">Restored. Books back in place: %1$d.</string>
     <string name="feature_settings_restored_waiting">Restored. Books back in place: %1$d. Waiting for their files: %2$d. Add those files and they return to their shelves.</string>
-    <string name="feature_settings_not_a_backup">That file isn't a Tsundoku backup.</string>
-    <string name="feature_settings_backup_unreadable">That file couldn't be read.</string>
+    <string name="feature_settings_not_a_backup">That file isn\'t a Tsundoku backup.</string>
+    <string name="feature_settings_backup_unreadable">That file couldn\'t be read.</string>
 
     <string name="feature_settings_about">About</string>
     <string name="feature_settings_version">Tsundoku %1$s</string>
