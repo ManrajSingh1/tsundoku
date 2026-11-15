@@ -12,10 +12,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import io.github.manrajsingh1.tsundoku.core.model.ColourTheme
 
 // The app's own palette: walnut shelves and lamplight. Used when the user has turned the
 // system's wallpaper colours off, and on the few devices that do not offer them.
@@ -95,8 +98,9 @@ private val DarkColors = darkColorScheme(
 )
 
 /**
- * The colours of the bookcase itself, which Material's roles have no names for. They stay
- * wood whatever the rest of the theme does: the shelves are the app's identity.
+ * The colours of the bookcase itself, which Material's roles have no names for. In the
+ * app's own theme and with wallpaper colours they are wood; a named theme builds its
+ * shelves from its own colours.
  */
 @Immutable
 data class BookcaseColors(
@@ -138,27 +142,59 @@ val MaterialTheme.bookcase: BookcaseColors
  * is respected everywhere; only the largest titles switch to the system serif, for the
  * bookish look.
  *
- * @param dynamicColor take the colours from the wallpaper. Off unless asked for: walnut and
- * amber are the default, and wallpaper colours are to be offered as a setting.
+ * @param colourTheme which colours to wear. Walnut and amber unless the user chose others.
+ * @param darkTheme which side of them: every theme has a light and a dark one.
  */
 @Composable
 fun TsundokuTheme(
+    colourTheme: ColourTheme = ColourTheme.TSUNDOKU,
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
+    val palette = paletteFor(colourTheme, darkTheme)
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        palette != null -> remember(palette) { palette.toColorScheme(darkTheme) }
+        colourTheme == ColourTheme.WALLPAPER && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
         darkTheme -> DarkColors
         else -> LightColors
     }
-    CompositionLocalProvider(LocalBookcaseColors provides if (darkTheme) DarkBookcase else LightBookcase) {
+    val bookcase = when {
+        palette != null -> remember(palette) { palette.toBookcase() }
+        darkTheme -> DarkBookcase
+        else -> LightBookcase
+    }
+    CompositionLocalProvider(LocalBookcaseColors provides bookcase) {
         MaterialTheme(colorScheme = colorScheme, typography = TsundokuTypography, content = content)
     }
 }
+
+/**
+ * A few colours that stand for a theme, for a chooser to show beside its name: the
+ * background, then the three accents. Empty for wallpaper colours, which are whatever the
+ * phone says they are.
+ */
+fun themeSwatch(colourTheme: ColourTheme, darkTheme: Boolean): List<Color> {
+    val palette = paletteFor(colourTheme, darkTheme)
+    return when {
+        palette != null -> palette.toColorScheme(darkTheme).let {
+            listOf(it.background, it.primary, it.secondary, it.tertiary)
+        }
+        colourTheme == ColourTheme.WALLPAPER -> emptyList()
+        else -> (if (darkTheme) DarkColors else LightColors).let {
+            listOf(it.background, it.primary, it.secondary, it.tertiary)
+        }
+    }
+}
+
+/**
+ * The page and text colours a named theme gives a book's pages, as ARGB, or null for the
+ * app's own theme and wallpaper colours, where plain white or black pages are used.
+ */
+fun pageColours(colourTheme: ColourTheme, darkTheme: Boolean): Pair<Int, Int>? =
+    paletteFor(colourTheme, darkTheme)?.let { Color(it.background).toArgb() to Color(it.text).toArgb() }
 
 private val Base = Typography()
 

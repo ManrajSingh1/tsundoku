@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.manrajsingh1.tsundoku.core.model.AppPreferences
+import io.github.manrajsingh1.tsundoku.core.model.ColourTheme
 import io.github.manrajsingh1.tsundoku.core.model.PageTheme
 import io.github.manrajsingh1.tsundoku.core.model.ReadingDirection
 import io.github.manrajsingh1.tsundoku.core.model.ThemeMode
@@ -23,7 +24,7 @@ class SettingsRepositoryTest {
     @After
     fun restoreDefaults() = runBlocking {
         settings.setThemeMode(ThemeMode.SYSTEM)
-        settings.setDynamicColor(false)
+        settings.setColourTheme(ColourTheme.TSUNDOKU)
         settings.setFlatCarousel(false)
         settings.setComicReadingDirection(ReadingDirection.RIGHT_TO_LEFT)
         settings.setEpubPageTheme(PageTheme.SYSTEM)
@@ -41,7 +42,7 @@ class SettingsRepositoryTest {
     fun everyChoiceIsRememberedAndReadBackTogether() = runBlocking {
         // Choosing a theme also asks Android to apply it; that must not fail.
         settings.setThemeMode(ThemeMode.DARK)
-        settings.setDynamicColor(true)
+        settings.setColourTheme(ColourTheme.NORD)
         settings.setFlatCarousel(true)
         settings.setComicReadingDirection(ReadingDirection.LEFT_TO_RIGHT)
         settings.setEpubPageTheme(PageTheme.SEPIA)
@@ -49,7 +50,7 @@ class SettingsRepositoryTest {
         assertEquals(
             AppPreferences(
                 themeMode = ThemeMode.DARK,
-                dynamicColor = true,
+                colourTheme = ColourTheme.NORD,
                 flatCarousel = true,
                 comicReadingDirection = ReadingDirection.LEFT_TO_RIGHT,
                 epubPageTheme = PageTheme.SEPIA,

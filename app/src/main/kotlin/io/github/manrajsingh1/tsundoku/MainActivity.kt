@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
         val preferencesAtStart = settings.preferencesNow()
         setContent {
             val preferences by settings.preferences.collectAsStateWithLifecycle(initialValue = preferencesAtStart)
-            TsundokuTheme(dynamicColor = preferences.dynamicColor) {
+            TsundokuTheme(colourTheme = preferences.colourTheme) {
                 // True while an unfolded foldable's hinge runs down the middle of the window.
                 val hasVerticalFold by remember {
                     WindowInfoTracker.getOrCreate(this).windowLayoutInfo(this).map { layout ->

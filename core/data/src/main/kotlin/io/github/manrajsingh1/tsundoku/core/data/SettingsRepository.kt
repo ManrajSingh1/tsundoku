@@ -12,6 +12,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.manrajsingh1.tsundoku.core.model.AppPreferences
+import io.github.manrajsingh1.tsundoku.core.model.ColourTheme
 import io.github.manrajsingh1.tsundoku.core.model.PageTheme
 import io.github.manrajsingh1.tsundoku.core.model.ReadingDirection
 import io.github.manrajsingh1.tsundoku.core.model.ThemeMode
@@ -51,7 +52,12 @@ class SettingsRepository @Inject constructor(
     val preferences: Flow<AppPreferences> = context.settingsStore.data.map { stored ->
         AppPreferences(
             themeMode = enumOr(stored[THEME_MODE], ThemeMode.SYSTEM),
-            dynamicColor = stored[DYNAMIC_COLOR] ?: false,
+            // Before there were themes to choose from there was one switch, for wallpaper
+            // colours. A phone that had it on keeps them.
+            colourTheme = enumOr(
+                stored[COLOUR_THEME],
+                if (stored[DYNAMIC_COLOR] == true) ColourTheme.WALLPAPER else ColourTheme.TSUNDOKU,
+            ),
             flatCarousel = stored[FLAT_CAROUSEL] ?: false,
             comicReadingDirection = when (stored[COMIC_DIRECTION]) {
                 ReadingDirection.LEFT_TO_RIGHT.name -> ReadingDirection.LEFT_TO_RIGHT
@@ -87,8 +93,8 @@ class SettingsRepository @Inject constructor(
         }
     }
 
-    suspend fun setDynamicColor(enabled: Boolean) {
-        context.settingsStore.edit { it[DYNAMIC_COLOR] = enabled }
+    suspend fun setColourTheme(theme: ColourTheme) {
+        context.settingsStore.edit { it[COLOUR_THEME] = theme.name }
     }
 
     suspend fun setFlatCarousel(enabled: Boolean) {
@@ -118,6 +124,7 @@ class SettingsRepository @Inject constructor(
         private val COMIC_DIRECTION = stringPreferencesKey("comic_reading_direction")
         private val THEME_MODE = stringPreferencesKey("theme_mode")
         private val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+        private val COLOUR_THEME = stringPreferencesKey("colour_theme")
         private val FLAT_CAROUSEL = booleanPreferencesKey("flat_carousel")
         private val EPUB_PAGE_THEME = stringPreferencesKey("epub_page_theme")
 

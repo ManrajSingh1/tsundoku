@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.manrajsingh1.tsundoku.core.data.OfflineLibraryRepository
+import io.github.manrajsingh1.tsundoku.core.data.backup.PendingRestore
 import io.github.manrajsingh1.tsundoku.core.database.ImportItemEntity
 import io.github.manrajsingh1.tsundoku.core.database.TsundokuDatabase
 import io.github.manrajsingh1.tsundoku.core.model.Book
@@ -51,6 +52,12 @@ class ImportEndToEndTest {
             shelfDao = database.shelfDao(),
             inspector = ReadiumPublicationInspector(context),
             covers = CoverStore(context),
+            pendingRestore = PendingRestore(
+                File(context.cacheDir, "no-restore").apply { mkdirs() },
+                database.bookDao(),
+                database.shelfDao(),
+                database.readingProgressDao(),
+            ),
         )
         library = OfflineLibraryRepository(database.bookDao(), database.shelfDao(), CoverStore(context), documents)
         workspace = File(context.cacheDir, "import-test").apply {

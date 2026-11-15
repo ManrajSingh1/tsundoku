@@ -207,19 +207,42 @@ expect "Documents" "Quarterly report, PDF"
 adb shell input swipe 500 700 500 1900 400
 sleep 3
 
-# 3a. Settings. Choosing the dark theme asks Android to redraw the app dark, which rebuilds
-#     the screen; it must come back as it was, and go back to following the phone.
+# 3a. Settings. Choosing a colour theme recolours the app at once; choosing dark asks
+#     Android to redraw it dark, which rebuilds the screen. Both must leave the app
+#     standing, and both are put back so the rest of this run is in the app's own colours.
 tap "More options"
 tap "Settings"
 describe "the settings screen"
 shot 03a-settings
-expect "Appearance" "Theme" "Wallpaper colours" "Flat covers" "Comics read right to left"
+expect "Appearance" "Light or dark" "Same as the phone" "Colours" "Walnut and amber" "Catppuccin" "Nord"
+tap "Catppuccin" 3
 tap "Dark" 4
-describe "settings after choosing the dark theme"
-shot 03b-settings-dark
-expect "Settings" "Theme" "Flat covers"
+describe "settings in Catppuccin, dark"
+shot 03b-settings-catppuccin-dark
+expect "Settings" "Catppuccin"
 fail_on_crash
+tap "Back to library"
+describe "the library in Catppuccin, dark"
+shot 03c-library-catppuccin-dark
+expect "Manga"
+tap "More options"
+tap "Settings"
 tap "Same as the phone" 4
+tap "Nord" 3
+shot 03d-settings-nord-light
+tap "Walnut and amber" 3
+adb shell input swipe 500 1900 500 300 300
+sleep 2
+adb shell input swipe 500 1900 500 300 300
+sleep 2
+describe "the end of the settings screen"
+shot 03e-settings-backup
+expect "Backup" "Save a backup" "Restore from a backup"
+tap "Restore from a backup"
+describe "being asked before a restore"
+expect "Restore from a backup?" "Choose backup" "Cancel"
+tap "Cancel"
+fail_on_crash
 tap "Back to library"
 describe "the library after visiting settings"
 expect "Manga"
